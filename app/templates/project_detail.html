@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} - X Ads Automation{% endblock %}
+{% block content %}
+<div x-data="projectDetail()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <a href="/projects" class="text-gray-500 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+            </a>
+            <div>
+                <h1 class="text-xl font-semibold text-white">{{ project.name }}</h1>
+                <p class="text-sm text-gray-500 mt-0.5">Project Settings</p>
+            </div>
+        </div>
+        <button @click="deleteProject()" class="px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">Delete Project</button>
+    </div>
+
+    <form @submit.prevent="saveProject()">
+        <!-- Basic Info -->
+        <div class="glass rounded-2xl p-5 mb-4">
+            <h2 class="text-sm font-semibold text-white mb-4">Basic Info</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Name</label>
+                    <input x-model="form.name" type="text" required class="input-field w-full px-3 py-2 rounded-xl text-sm text-white">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">API Credential</label>
+                    <select x-model="form.credential_id" @change="onCredentialChange()" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="">-- Select --</option>
+                        {% for cred in credentials %}
+                        <option value="{{ cred.id }}" {% if project.credential_id == cred.id %}selected{% endif %}>{{ cred.name }} ({{ cred.ads_account_id }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Description</label>
+                    <input x-model="form.description" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white placeholder-gray-600">
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment & Tracking -->
+        <div class="glass rounded-2xl p-5 mb-4">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-sm font-semibold text-white">Payment & Tracking</h2>
+                <button type="button" @click="syncFromApi()" :disabled="syncing" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors">
+                    <span x-show="!syncing">Sync from API</span>
+                    <span x-show="syncing">Syncing...</span>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Funding Instrument ID</label>
+                    <select x-model="form.funding_instrument_id" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="">-- Select --</option>
+                        <template x-for="fi in fundingInstruments" :key="fi.id">
+                            <option :value="fi.id" x-text="fi.description || fi.id" :selected="fi.id === form.funding_instrument_id"></option>
+                        </template>
+                        {% if project.funding_instrument_id %}
+                        <option value="{{ project.funding_instrument_id }}" selected>{{ project.funding_instrument_id }} (saved)</option>
+                        {% endif %}
+                    </select>
+                    <p class="text-[10px] text-gray-600 mt-1">Or enter manually:</p>
+                    <input x-model="form.funding_instrument_id" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white mt-1" placeholder="e.g. i77332156">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Conversion Tag ID</label>
+                    <select x-model="form.conversion_tag_id" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="">-- Select --</option>
+                        <template x-for="tag in conversionTags" :key="tag.id">
+                            <option :value="tag.id" x-text="(tag.name || tag.type || '') + ' (' + tag.id + ')'" :selected="tag.id === form.conversion_tag_id"></option>
+                        </template>
+                        {% if project.conversion_tag_id %}
+                        <option value="{{ project.conversion_tag_id }}" selected>{{ project.conversion_tag_id }} (saved)</option>
+                        {% endif %}
+                    </select>
+                    <input x-model="form.conversion_tag_id" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white mt-1" placeholder="e.g. i60451460">
+                </div>
+            </div>
+        </div>
+
+        <!-- Default Targeting -->
+        <div class="glass rounded-2xl p-5 mb-4">
+            <h2 class="text-sm font-semibold text-white mb-4">Default Targeting</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Objective</label>
+                    <select x-model="form.default_objective" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="WEBSITE_CLICKS">Website Clicks</option>
+                        <option value="WEBSITE_CONVERSIONS">Website Conversions</option>
+                        <option value="APP_INSTALLS">App Installs</option>
+                        <option value="ENGAGEMENTS">Engagements</option>
+                        <option value="REACH">Reach</option>
+                        <option value="VIDEO_VIEWS">Video Views</option>
+                        <option value="FOLLOWERS">Followers</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Gender</label>
+                    <select x-model="form.default_gender" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="">Any</option>
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Bid Strategy</label>
+                    <select x-model="form.default_bid_strategy" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="AUTO">Auto Bid</option>
+                        <option value="TARGET">Target Cost</option>
+                        <option value="MAX">Max Bid</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Placements (JSON)</label>
+                    <input x-model="form.default_placements" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["TIMELINES","SEARCH_RESULTS","PROFILES"]'>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Platforms (JSON)</label>
+                    <input x-model="form.default_platforms" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["0","1"]'>
+                    <p class="text-[10px] text-gray-600 mt-0.5">0=iOS, 1=Android, 4=Desktop</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Languages (JSON)</label>
+                    <input x-model="form.default_languages" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["ja"]'>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Age Ranges (JSON)</label>
+                    <input x-model="form.default_age_ranges" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["AGE_20_TO_24","AGE_25_TO_34"]'>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Locations (JSON)</label>
+                    <input x-model="form.default_locations" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["96b1de42aa60e098"]'>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Audience Expansion</label>
+                    <select x-model="form.default_audience_expansion" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="">None</option>
+                        <option value="EXPANDED">Expanded</option>
+                        <option value="NARROW">Narrow</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Defaults -->
+        <div class="glass rounded-2xl p-5 mb-4">
+            <h2 class="text-sm font-semibold text-white mb-4">Default Budget</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Daily Budget (JPY)</label>
+                    <input x-model.number="form.default_daily_budget" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="5000">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Default Bid (JPY)</label>
+                    <input x-model.number="form.default_bid_amount" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="180">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Currency</label>
+                    <select x-model="form.currency" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                        <option value="JPY">JPY</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Save -->
+        <div class="flex justify-end">
+            <button type="submit" :disabled="saving" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[13px] font-medium rounded-xl transition-colors">
+                <span x-show="!saving">Save Changes</span>
+                <span x-show="saving">Saving...</span>
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function projectDetail() {
+    return {
+        saving: false,
+        syncing: false,
+        fundingInstruments: [],
+        conversionTags: [],
+        form: {
+            name: '{{ project.name }}',
+            description: '{{ project.description or "" }}',
+            credential_id: '{{ project.credential_id or "" }}',
+            funding_instrument_id: '{{ project.funding_instrument_id or "" }}',
+            conversion_tag_id: '{{ project.conversion_tag_id or "" }}',
+            default_objective: '{{ project.default_objective }}',
+            default_placements: '{{ project.default_placements or "" }}',
+            default_platforms: '{{ project.default_platforms or "" }}',
+            default_gender: '{{ project.default_gender or "" }}',
+            default_age_ranges: '{{ project.default_age_ranges or "" }}',
+            default_locations: '{{ project.default_locations or "" }}',
+            default_languages: '{{ project.default_languages or "" }}',
+            default_bid_strategy: '{{ project.default_bid_strategy }}',
+            default_daily_budget: {{ project.default_daily_budget or 'null' }},
+            default_bid_amount: {{ project.default_bid_amount or 'null' }},
+            currency: '{{ project.currency }}',
+            default_audience_expansion: '{{ project.default_audience_expansion or "" }}',
+        },
+        async saveProject() {
+            this.saving = true;
+            try {
+                const data = { ...this.form };
+                if (data.credential_id) data.credential_id = parseInt(data.credential_id);
+                else data.credential_id = null;
+                await api('/api/projects/{{ project.id }}', 'PUT', data);
+                toast('Saved');
+            } catch (err) { toast(err.message, 'error'); }
+            this.saving = false;
+        },
+        async deleteProject() {
+            if (!confirm('Delete this project?')) return;
+            try {
+                await api('/api/projects/{{ project.id }}', 'DELETE');
+                toast('Deleted');
+                setTimeout(() => location.href = '/projects', 500);
+            } catch (err) { toast(err.message, 'error'); }
+        },
+        async syncFromApi() {
+            if (!this.form.credential_id) { toast('Select a credential first', 'error'); return; }
+            this.syncing = true;
+            try {
+                const [fiRes, tagRes] = await Promise.all([
+                    api(`/api/credentials/${this.form.credential_id}/funding-instruments`),
+                    api(`/api/credentials/${this.form.credential_id}/conversion-tags`),
+                ]);
+                if (fiRes.ok) this.fundingInstruments = fiRes.data || [];
+                if (tagRes.ok) this.conversionTags = tagRes.data || [];
+                toast('Synced from API');
+            } catch (err) { toast(err.message, 'error'); }
+            this.syncing = false;
+        },
+        onCredentialChange() {
+            this.fundingInstruments = [];
+            this.conversionTags = [];
+        }
+    };
+}
+</script>
+{% endblock %}

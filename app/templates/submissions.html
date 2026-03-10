@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Submissions - X Ads Automation{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-white">Submission History</h1>
+            <p class="text-sm text-gray-500 mt-1">All campaign submissions</p>
+        </div>
+        <a href="/submissions/new" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-[13px] font-medium rounded-xl transition-colors flex items-center">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            New Submission
+        </a>
+    </div>
+
+    {% if batches %}
+    <div class="glass rounded-2xl overflow-hidden">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-white/[0.04]">
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Campaigns</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for batch in batches %}
+                <tr class="border-b border-white/[0.02] hover:bg-white/[0.02] cursor-pointer" onclick="location.href='/submissions/{{ batch.id }}'">
+                    <td class="px-5 py-3 text-sm text-white">{{ batch.name }}</td>
+                    <td class="px-5 py-3">
+                        <span class="badge {% if batch.submission_method == 'api' %}bg-sky-500/10 text-sky-400{% else %}bg-emerald-500/10 text-emerald-400{% endif %}">
+                            {{ batch.submission_method|upper }}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3">
+                        {% if batch.status == 'completed' %}
+                            <span class="badge bg-emerald-500/10 text-emerald-400">Completed</span>
+                        {% elif batch.status == 'submitting' %}
+                            <span class="badge bg-sky-500/10 text-sky-400">Submitting</span>
+                        {% elif batch.status == 'partial_failure' %}
+                            <span class="badge bg-amber-500/10 text-amber-400">Partial</span>
+                        {% elif batch.status == 'failed' %}
+                            <span class="badge bg-red-500/10 text-red-400">Failed</span>
+                        {% else %}
+                            <span class="badge bg-gray-500/10 text-gray-400">Draft</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-sm text-gray-400">{{ batch.succeeded_campaigns }}/{{ batch.total_campaigns }}</td>
+                    <td class="px-5 py-3 text-sm text-gray-500">{{ batch.created_at.strftime('%Y/%m/%d %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="glass rounded-2xl p-8 text-center">
+        <p class="text-gray-500 text-sm">No submissions yet</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

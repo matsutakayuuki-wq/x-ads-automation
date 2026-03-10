@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Projects - X Ads Automation{% endblock %}
+{% block content %}
+<div x-data="projectsApp()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-white">Projects</h1>
+            <p class="text-sm text-gray-500 mt-1">Campaign presets by client</p>
+        </div>
+        <button @click="showModal = true" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-[13px] font-medium rounded-xl transition-colors flex items-center">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            New Project
+        </button>
+    </div>
+
+    <!-- Project List -->
+    {% if projects %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for project in projects %}
+        <a href="/projects/{{ project.id }}" class="glass rounded-2xl p-5 hover:border-sky-500/20 transition-all group">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-white group-hover:text-sky-400 transition-colors">{{ project.name }}</h3>
+                    {% if project.description %}
+                    <p class="text-xs text-gray-500 mt-1">{{ project.description }}</p>
+                    {% endif %}
+                </div>
+                <span class="badge {% if project.is_active %}bg-emerald-500/10 text-emerald-400{% else %}bg-gray-500/10 text-gray-400{% endif %}">
+                    {{ 'Active' if project.is_active else 'Inactive' }}
+                </span>
+            </div>
+            <div class="flex items-center space-x-4 mt-3 text-[11px] text-gray-500">
+                <span>{{ project.default_objective }}</span>
+                <span>{{ project.currency }}</span>
+                {% if project.default_daily_budget %}
+                <span>Budget: {{ project.default_daily_budget|string }} {{ project.currency }}/day</span>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="glass rounded-2xl p-8 text-center">
+        <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/></svg>
+        <p class="text-gray-500 text-sm">No projects yet</p>
+        <button @click="showModal = true" class="mt-4 px-4 py-2 bg-sky-600/10 text-sky-400 text-sm rounded-xl hover:bg-sky-600/20 transition-colors">Create your first project</button>
+    </div>
+    {% endif %}
+
+    <!-- Create Modal -->
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showModal = false">
+        <div class="bg-[#111114] border border-white/[0.06] rounded-2xl p-6 w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-base font-semibold text-white">New Project</h3>
+                <button @click="showModal = false" class="text-gray-600 hover:text-gray-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form @submit.prevent="createProject()">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Project Name</label>
+                        <input x-model="form.name" type="text" required placeholder="e.g. Client A - LP Campaign" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white placeholder-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Description</label>
+                        <input x-model="form.description" type="text" placeholder="Optional" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white placeholder-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">API Credential</label>
+                        <select x-model="form.credential_id" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                            <option value="">-- Select --</option>
+                            {% for cred in credentials %}
+                            <option value="{{ cred.id }}">{{ cred.name }} ({{ cred.ads_account_id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" @click="showModal = false" class="px-4 py-2 text-[13px] text-gray-500 hover:text-white transition-colors">Cancel</button>
+                    <button type="submit" :disabled="saving" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[13px] font-medium rounded-xl transition-colors">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function projectsApp() {
+    return {
+        showModal: false,
+        saving: false,
+        form: { name: '', description: '', credential_id: '' },
+        async createProject() {
+            this.saving = true;
+            try {
+                const data = { ...this.form };
+                if (data.credential_id) data.credential_id = parseInt(data.credential_id);
+                else delete data.credential_id;
+                await api('/api/projects', 'POST', data);
+                toast('Project created');
+                setTimeout(() => location.reload(), 500);
+            } catch (err) { toast(err.message, 'error'); }
+            this.saving = false;
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Admin - X Ads Automation{% endblock %}
+{% block content %}
+<div class="space-y-8">
+    <div>
+        <h1 class="text-xl font-semibold text-white">Admin Dashboard</h1>
+        <p class="text-sm text-gray-500 mt-1">System overview and user management</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-card rounded-2xl p-5">
+            <p class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Users</p>
+            <p class="text-2xl font-bold text-white mt-1">{{ users|length }}</p>
+        </div>
+        <div class="stat-card rounded-2xl p-5">
+            <p class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Total Batches</p>
+            <p class="text-2xl font-bold text-white mt-1">{{ total_batches }}</p>
+        </div>
+        <div class="stat-card rounded-2xl p-5">
+            <p class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Total Campaigns</p>
+            <p class="text-2xl font-bold text-white mt-1">{{ total_campaigns }}</p>
+        </div>
+        <div class="stat-card rounded-2xl p-5">
+            <p class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Success Rate</p>
+            <p class="text-2xl font-bold text-emerald-400 mt-1">
+                {% if total_campaigns > 0 %}{{ ((succeeded_campaigns / total_campaigns) * 100)|round(1) }}%{% else %}--{% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Users -->
+    <div>
+        <h2 class="text-base font-semibold text-white mb-4">Users</h2>
+        <div class="glass rounded-2xl overflow-hidden">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-white/[0.04]">
+                        <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                        <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr class="border-b border-white/[0.02]">
+                        <td class="px-5 py-3 text-sm text-white">{{ u.username }}</td>
+                        <td class="px-5 py-3 text-sm text-gray-400">{{ u.email }}</td>
+                        <td class="px-5 py-3">
+                            <span class="badge {% if u.is_admin %}bg-amber-500/10 text-amber-400{% else %}bg-gray-500/10 text-gray-400{% endif %}">
+                                {{ 'Admin' if u.is_admin else 'User' }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3">
+                            <span class="badge {% if u.is_active %}bg-emerald-500/10 text-emerald-400{% else %}bg-red-500/10 text-red-400{% endif %}">
+                                {{ 'Active' if u.is_active else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-3 text-sm text-gray-500">{{ u.created_at.strftime('%Y/%m/%d') }}</td>
+                        <td class="px-5 py-3 space-x-2">
+                            {% if u.id != user.id %}
+                            <button onclick="toggleActive({{ u.id }})" class="text-[11px] text-gray-400 hover:text-white transition-colors">
+                                {{ 'Deactivate' if u.is_active else 'Activate' }}
+                            </button>
+                            <button onclick="toggleAdmin({{ u.id }})" class="text-[11px] text-gray-400 hover:text-amber-400 transition-colors">
+                                {{ 'Remove Admin' if u.is_admin else 'Make Admin' }}
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function toggleActive(id) {
+    try {
+        const res = await api(`/api/admin/users/${id}/toggle-active`, 'POST');
+        toast(res.is_active ? 'User activated' : 'User deactivated');
+        setTimeout(() => location.reload(), 500);
+    } catch (err) { toast(err.message, 'error'); }
+}
+async function toggleAdmin(id) {
+    try {
+        const res = await api(`/api/admin/users/${id}/toggle-admin`, 'POST');
+        toast(res.is_admin ? 'Admin granted' : 'Admin removed');
+        setTimeout(() => location.reload(), 500);
+    } catch (err) { toast(err.message, 'error'); }
+}
+</script>
+{% endblock %}

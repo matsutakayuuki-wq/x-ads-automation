@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}New Submission - X Ads Automation{% endblock %}
+{% block content %}
+<div x-data="submissionApp()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-white">New Submission</h1>
+            <p class="text-sm text-gray-500 mt-1">Create and submit ad campaigns</p>
+        </div>
+    </div>
+
+    <!-- Step 1: Project Selection -->
+    <div class="glass rounded-2xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-3">1. Select Project</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <select x-model="projectId" @change="loadProjectDefaults()" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white bg-transparent">
+                    <option value="">-- Select Project --</option>
+                    {% for p in projects %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <input x-model="batchName" type="text" placeholder="Batch name (e.g. March LP Campaign)" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-600">
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Campaigns -->
+    <div x-show="projectId" x-cloak>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-white">2. Campaign Details</h2>
+            <div class="flex space-x-2">
+                <button @click="addCampaign()" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center">
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    Add Campaign
+                </button>
+            </div>
+        </div>
+
+        <template x-for="(c, idx) in campaigns" :key="idx">
+            <div class="glass rounded-2xl p-5 mb-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        Campaign #<span x-text="idx + 1"></span>
+                    </h3>
+                    <div class="flex space-x-2">
+                        <button @click="duplicateCampaign(idx)" class="text-[10px] text-gray-500 hover:text-sky-400 transition-colors">Duplicate</button>
+                        <button x-show="campaigns.length > 1" @click="removeCampaign(idx)" class="text-[10px] text-gray-500 hover:text-red-400 transition-colors">Remove</button>
+                    </div>
+                </div>
+
+                <!-- Campaign Settings -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Campaign Name *</label>
+                        <input x-model="c.campaign_name" type="text" required placeholder="LP001" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Daily Budget (JPY)</label>
+                        <input x-model.number="c.campaign_daily_budget" type="number" placeholder="5000" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Bid Amount (JPY)</label>
+                        <input x-model.number="c.bid_amount" type="number" placeholder="180" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                    </div>
+                </div>
+
+                <!-- Ad Group Settings -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Ad Group Name</label>
+                        <input x-model="c.line_item_name" type="text" placeholder="Same as campaign" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Objective</label>
+                        <select x-model="c.campaign_objective" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
+                            <option value="WEBSITE_CLICKS">Website Clicks</option>
+                            <option value="WEBSITE_CONVERSIONS">Website Conversions</option>
+                            <option value="APP_INSTALLS">App Installs</option>
+                            <option value="ENGAGEMENTS">Engagements</option>
+                            <option value="REACH">Reach</option>
+                            <option value="VIDEO_VIEWS">Video Views</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Bid Strategy</label>
+                        <select x-model="c.bid_strategy" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
+                            <option value="AUTO">Auto Bid</option>
+                            <option value="TARGET">Target Cost</option>
+                            <option value="MAX">Max Bid</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Targeting (collapsible) -->
+                <details class="mb-4">
+                    <summary class="text-[10px] font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-300 transition-colors">Targeting (click to expand)</summary>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Gender</label>
+                            <select x-model="c.target_gender" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
+                                <option value="">Any</option>
+                                <option value="MALE">Male</option>
+                                <option value="FEMALE">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Age Ranges (JSON)</label>
+                            <input x-model="c.target_age_ranges" type="text" placeholder='["AGE_20_TO_24"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Platforms (JSON)</label>
+                            <input x-model="c.target_platforms" type="text" placeholder='["0","1"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Placements (JSON)</label>
+                            <input x-model="c.placements" type="text" placeholder='["TIMELINES","SEARCH_RESULTS"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Locations (JSON)</label>
+                            <input x-model="c.target_locations" type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Languages (JSON)</label>
+                            <input x-model="c.target_languages" type="text" placeholder='["ja"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Audience Expansion</label>
+                            <select x-model="c.audience_expansion" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
+                                <option value="">None</option>
+                                <option value="EXPANDED">Expanded</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Tweet IDs -->
+                <div>
+                    <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Tweet IDs * (comma separated or JSON array)</label>
+                    <input x-model="c.tweet_ids" type="text" required placeholder="1234567890, 9876543210" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Step 3: Submit -->
+    <div x-show="projectId && campaigns.length > 0" x-cloak class="glass rounded-2xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-4">3. Submit</h2>
+
+        <!-- Summary -->
+        <div class="mb-4 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+            <p class="text-xs text-gray-400">
+                <span x-text="campaigns.length"></span> campaign(s) will be created as <strong class="text-white">PAUSED</strong>.
+                You can activate them in X Ads Manager after review.
+            </p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <button @click="submitViaApi()" :disabled="submitting" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[13px] font-medium rounded-xl transition-colors flex items-center">
+                <span x-show="!submitting">Submit via API</span>
+                <span x-show="submitting" class="flex items-center">
+                    <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    Submitting...
+                </span>
+            </button>
+            <button @click="downloadExcel()" :disabled="submitting" class="px-5 py-2.5 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 text-[13px] font-medium rounded-xl transition-colors">
+                Download Excel
+            </button>
+        </div>
+
+        <!-- Results -->
+        <div x-show="result" x-cloak class="mt-4">
+            <div class="px-4 py-3 rounded-xl text-sm"
+                 :class="result?.status === 'completed' ? 'bg-emerald-500/5 border border-emerald-500/10 text-emerald-400' : result?.status === 'failed' ? 'bg-red-500/5 border border-red-500/10 text-red-400' : 'bg-amber-500/5 border border-amber-500/10 text-amber-400'">
+                <p class="font-medium" x-text="result?.status === 'completed' ? 'All campaigns submitted successfully!' : result?.status === 'failed' ? 'Submission failed' : 'Partial success'"></p>
+                <p class="text-xs mt-1 opacity-70">
+                    <span x-text="result?.succeeded_campaigns || 0"></span> succeeded, <span x-text="result?.failed_campaigns || 0"></span> failed
+                </p>
+                <a x-show="result?.id" :href="'/submissions/' + result?.id" class="text-xs underline mt-2 inline-block">View details</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function submissionApp() {
+    const defaultCampaign = () => ({
+        campaign_name: '',
+        campaign_objective: 'WEBSITE_CLICKS',
+        campaign_daily_budget: null,
+        campaign_total_budget: null,
+        funding_instrument_id: '',
+        line_item_name: '',
+        bid_amount: null,
+        bid_strategy: 'AUTO',
+        placements: '',
+        target_platforms: '',
+        target_gender: '',
+        target_age_ranges: '',
+        target_locations: '',
+        target_languages: '',
+        audience_expansion: '',
+        conversion_tag_id: '',
+        tweet_ids: '',
+    });
+
+    return {
+        projectId: '',
+        batchName: '',
+        projectDefaults: null,
+        campaigns: [defaultCampaign()],
+        submitting: false,
+        result: null,
+
+        addCampaign() {
+            const c = defaultCampaign();
+            if (this.projectDefaults) this.applyDefaults(c);
+            this.campaigns.push(c);
+        },
+        removeCampaign(idx) { this.campaigns.splice(idx, 1); },
+        duplicateCampaign(idx) {
+            this.campaigns.splice(idx + 1, 0, JSON.parse(JSON.stringify(this.campaigns[idx])));
+        },
+
+        applyDefaults(c) {
+            const d = this.projectDefaults;
+            if (!d) return;
+            if (d.funding_instrument_id) c.funding_instrument_id = d.funding_instrument_id;
+            if (d.conversion_tag_id) c.conversion_tag_id = d.conversion_tag_id;
+            if (d.default_objective) c.campaign_objective = d.default_objective;
+            if (d.default_placements) c.placements = d.default_placements;
+            if (d.default_platforms) c.target_platforms = d.default_platforms;
+            if (d.default_gender) c.target_gender = d.default_gender;
+            if (d.default_age_ranges) c.target_age_ranges = d.default_age_ranges;
+            if (d.default_locations) c.target_locations = d.default_locations;
+            if (d.default_languages) c.target_languages = d.default_languages;
+            if (d.default_daily_budget) c.campaign_daily_budget = d.default_daily_budget;
+            if (d.default_bid_amount) c.bid_amount = d.default_bid_amount;
+            if (d.default_bid_strategy) c.bid_strategy = d.default_bid_strategy;
+            if (d.default_audience_expansion) c.audience_expansion = d.default_audience_expansion;
+        },
+
+        async loadProjectDefaults() {
+            if (!this.projectId) return;
+            try {
+                const data = await api(`/api/projects/${this.projectId}`);
+                this.projectDefaults = data;
+                this.campaigns.forEach(c => this.applyDefaults(c));
+                toast('Project defaults loaded');
+            } catch (err) { toast(err.message, 'error'); }
+        },
+
+        buildPayload() {
+            return {
+                project_id: parseInt(this.projectId),
+                name: this.batchName || `Submission ${new Date().toLocaleDateString('ja-JP')}`,
+                campaigns: this.campaigns.map(c => {
+                    const out = { ...c };
+                    // tweet_ids: ensure JSON array format
+                    if (out.tweet_ids && !out.tweet_ids.startsWith('[')) {
+                        const ids = out.tweet_ids.split(',').map(s => s.trim()).filter(Boolean);
+                        out.tweet_ids = JSON.stringify(ids);
+                    }
+                    return out;
+                }),
+            };
+        },
+
+        async submitViaApi() {
+            if (!this.projectId) { toast('Select a project', 'error'); return; }
+            this.submitting = true;
+            this.result = null;
+            try {
+                const payload = this.buildPayload();
+                const batch = await api('/api/submissions', 'POST', payload);
+                toast('Batch created, submitting...');
+                const result = await api(`/api/submissions/${batch.id}/submit`, 'POST');
+                this.result = result;
+                if (result.status === 'completed') toast('All campaigns submitted!');
+                else if (result.status === 'partial_failure') toast('Some campaigns failed', 'error');
+                else toast('Submission failed', 'error');
+            } catch (err) { toast(err.message, 'error'); }
+            this.submitting = false;
+        },
+
+        async downloadExcel() {
+            if (!this.projectId) { toast('Select a project', 'error'); return; }
+            this.submitting = true;
+            try {
+                const payload = this.buildPayload();
+                const batch = await api('/api/submissions', 'POST', payload);
+                window.location.href = `/api/submissions/${batch.id}/excel`;
+                toast('Excel download started');
+            } catch (err) { toast(err.message, 'error'); }
+            this.submitting = false;
+        },
+    };
+}
+</script>
+{% endblock %}

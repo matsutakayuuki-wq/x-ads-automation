@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ batch.name }} - X Ads Automation{% endblock %}
+{% block content %}
+<div x-data="{ retrying: false }" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <a href="/submissions" class="text-gray-500 hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+            </a>
+            <div>
+                <h1 class="text-xl font-semibold text-white">{{ batch.name }}</h1>
+                <div class="flex items-center space-x-3 mt-1">
+                    {% if batch.status == 'completed' %}
+                        <span class="badge bg-emerald-500/10 text-emerald-400">Completed</span>
+                    {% elif batch.status == 'submitting' %}
+                        <span class="badge bg-sky-500/10 text-sky-400">Submitting</span>
+                    {% elif batch.status == 'partial_failure' %}
+                        <span class="badge bg-amber-500/10 text-amber-400">Partial Failure</span>
+                    {% elif batch.status == 'failed' %}
+                        <span class="badge bg-red-500/10 text-red-400">Failed</span>
+                    {% else %}
+                        <span class="badge bg-gray-500/10 text-gray-400">Draft</span>
+                    {% endif %}
+                    <span class="text-xs text-gray-500">{{ batch.succeeded_campaigns }}/{{ batch.total_campaigns }} campaigns succeeded</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex space-x-2">
+            {% if batch.failed_campaigns > 0 %}
+            <button @click="retryFailed()" :disabled="retrying" class="px-4 py-2 bg-amber-600/10 text-amber-400 hover:bg-amber-600/20 text-[13px] font-medium rounded-xl transition-colors">
+                <span x-show="!retrying">Retry Failed</span>
+                <span x-show="retrying">Retrying...</span>
+            </button>
+            {% endif %}
+            <a href="/api/submissions/{{ batch.id }}/excel" class="px-4 py-2 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 text-[13px] font-medium rounded-xl transition-colors">
+                Download Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Batch Info -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="stat-card rounded-xl p-4">
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Method</p>
+            <p class="text-sm font-medium text-white mt-1">{{ batch.submission_method|upper }}</p>
+        </div>
+        <div class="stat-card rounded-xl p-4">
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Total</p>
+            <p class="text-sm font-medium text-white mt-1">{{ batch.total_campaigns }}</p>
+        </div>
+        <div class="stat-card rounded-xl p-4">
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Succeeded</p>
+            <p class="text-sm font-medium text-emerald-400 mt-1">{{ batch.succeeded_campaigns }}</p>
+        </div>
+        <div class="stat-card rounded-xl p-4">
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Failed</p>
+            <p class="text-sm font-medium {% if batch.failed_campaigns > 0 %}text-red-400{% else %}text-gray-500{% endif %} mt-1">{{ batch.failed_campaigns }}</p>
+        </div>
+    </div>
+
+    <!-- Campaign List -->
+    <div class="glass rounded-2xl overflow-hidden">
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-white/[0.04]">
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Objective</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Budget</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">API ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in batch.campaigns %}
+                <tr class="border-b border-white/[0.02]">
+                    <td class="px-5 py-3 text-sm text-gray-500">{{ c.sort_order + 1 }}</td>
+                    <td class="px-5 py-3">
+                        <div class="text-sm text-white">{{ c.campaign_name }}</div>
+                        {% if c.line_item_name %}
+                        <div class="text-[11px] text-gray-500">{{ c.line_item_name }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-sm text-gray-400">{{ c.campaign_objective }}</td>
+                    <td class="px-5 py-3 text-sm text-gray-400">
+                        {% if c.campaign_daily_budget %}{{ c.campaign_daily_budget|string }} JPY/day{% endif %}
+                    </td>
+                    <td class="px-5 py-3">
+                        {% if c.status == 'success' %}
+                            <span class="badge bg-emerald-500/10 text-emerald-400">Success</span>
+                        {% elif c.status == 'failed' %}
+                            <span class="badge bg-red-500/10 text-red-400">Failed</span>
+                        {% elif c.status == 'submitting' %}
+                            <span class="badge bg-sky-500/10 text-sky-400">Submitting</span>
+                        {% else %}
+                            <span class="badge bg-gray-500/10 text-gray-400">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-5 py-3 text-[11px] text-gray-500 font-mono">
+                        {% if c.api_campaign_id %}{{ c.api_campaign_id }}{% endif %}
+                    </td>
+                </tr>
+                {% if c.error_message %}
+                <tr class="border-b border-white/[0.02]">
+                    <td></td>
+                    <td colspan="5" class="px-5 py-2 text-xs text-red-400/80">{{ c.error_message }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if batch.error_summary %}
+    <div class="px-4 py-3 rounded-xl bg-red-500/5 border border-red-500/10 text-red-400 text-sm">
+        {{ batch.error_summary }}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function retryFailed() {
+    if (!confirm('Retry failed campaigns?')) return;
+    try {
+        const res = await api('/api/submissions/{{ batch.id }}/retry', 'POST');
+        toast(`Retry complete: ${res.succeeded_campaigns} succeeded`);
+        setTimeout(() => location.reload(), 1000);
+    } catch (err) { toast(err.message, 'error'); }
+}
+</script>
+{% endblock %}
