@@ -192,7 +192,8 @@ function lpApp() {
         async loadLps() {
             if (!this.projectId) { this.lps = []; return; }
             try {
-                this.lps = await api(`/api/projects/${this.projectId}/landing-pages`);
+                const data = await api(`/api/projects/${this.projectId}/landing-pages`);
+                this.lps = data.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
             } catch (e) { toast(e.message, 'error'); }
         },
 
