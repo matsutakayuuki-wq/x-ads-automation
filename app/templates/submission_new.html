@@ -10,11 +10,12 @@
         </div>
     </div>
 
-    <!-- Step 1: Project Selection -->
+    <!-- Step 1: Project & Audience Selection -->
     <div class="glass rounded-2xl p-5">
-        <h2 class="text-sm font-semibold text-white mb-3">1. 案件を選択</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h2 class="text-sm font-semibold text-white mb-3">1. 案件・オーディエンスを選択</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
+                <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">案件</label>
                 <select x-model="projectId" @change="loadProjectDefaults()" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white bg-transparent">
                     <option value="">-- 案件を選択 --</option>
                     {% for p in projects %}
@@ -23,7 +24,17 @@
                 </select>
             </div>
             <div>
-                <input x-model="batchName" type="text" placeholder="バッチ名（例: 3月LPキャンペーン）" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-600">
+                <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">オーディエンス</label>
+                <select x-model="audienceId" @change="applyAudienceDefaults()" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white bg-transparent" :disabled="!projectId">
+                    <option value="">-- オーディエンス選択（任意）--</option>
+                    <template x-for="aud in projectAudiences" :key="aud.id">
+                        <option :value="aud.id" x-text="aud.name"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">バッチ名</label>
+                <input x-model="batchName" type="text" placeholder="例: 3月LPキャンペーン" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-600">
             </div>
         </div>
     </div>
@@ -473,8 +484,11 @@ function submissionApp() {
 
     return {
         projectId: '',
+        audienceId: '',
+        projectAudiences: [],
         batchName: '',
         projectDefaults: null,
+        audienceDefaults: null,
         campaigns: [defaultCampaign()],
         submitting: false,
         uploading: false,
@@ -507,35 +521,54 @@ function submissionApp() {
         },
 
         applyDefaults(c) {
-            const d = this.projectDefaults;
-            if (!d) return;
-            if (d.funding_instrument_id) c.funding_instrument_id = d.funding_instrument_id;
-            if (d.conversion_tag_id) c.conversion_tag_id = d.conversion_tag_id;
-            if (d.default_objective) c.campaign_objective = d.default_objective;
-            if (d.default_placements) c.placements = d.default_placements;
-            if (d.default_platforms) c.target_platforms = d.default_platforms;
-            if (d.default_gender) c.target_gender = d.default_gender;
-            if (d.default_age_ranges) c.target_age_ranges = d.default_age_ranges;
-            if (d.default_locations) c.target_locations = d.default_locations;
-            if (d.default_languages) c.target_languages = d.default_languages;
-            if (d.default_daily_budget) c.campaign_daily_budget = d.default_daily_budget;
-            if (d.default_bid_amount) c.bid_amount = d.default_bid_amount;
-            if (d.default_bid_strategy) c.bid_strategy = d.default_bid_strategy;
-            if (d.default_audience_expansion) c.audience_expansion = d.default_audience_expansion;
+            // Project レベル: funding_instrument_id, conversion_tag_id
+            const p = this.projectDefaults;
+            if (p) {
+                if (p.funding_instrument_id) c.funding_instrument_id = p.funding_instrument_id;
+                if (p.conversion_tag_id) c.conversion_tag_id = p.conversion_tag_id;
+            }
+            // Audience レベル: ターゲティング・予算
+            const d = this.audienceDefaults;
+            if (d) {
+                if (d.default_objective) c.campaign_objective = d.default_objective;
+                if (d.default_placements) c.placements = d.default_placements;
+                if (d.default_platforms) c.target_platforms = d.default_platforms;
+                if (d.default_gender) c.target_gender = d.default_gender;
+                if (d.default_age_ranges) c.target_age_ranges = d.default_age_ranges;
+                if (d.default_locations) c.target_locations = d.default_locations;
+                if (d.default_languages) c.target_languages = d.default_languages;
+                if (d.default_daily_budget) c.campaign_daily_budget = d.default_daily_budget;
+                if (d.default_bid_amount) c.bid_amount = d.default_bid_amount;
+                if (d.default_bid_strategy) c.bid_strategy = d.default_bid_strategy;
+                if (d.default_audience_expansion) c.audience_expansion = d.default_audience_expansion;
+            }
         },
 
         async loadProjectDefaults() {
-            if (!this.projectId) { this.landingPages = []; return; }
+            if (!this.projectId) { this.landingPages = []; this.projectAudiences = []; return; }
+            this.audienceId = '';
+            this.audienceDefaults = null;
             try {
-                const [data, lps] = await Promise.all([
+                const [data, lps, audiences] = await Promise.all([
                     api(`/api/projects/${this.projectId}`),
                     api(`/api/projects/${this.projectId}/landing-pages`),
+                    api(`/api/projects/${this.projectId}/audiences`),
                 ]);
                 this.projectDefaults = data;
                 this.landingPages = lps;
+                this.projectAudiences = audiences;
                 this.campaigns.forEach(c => this.applyDefaults(c));
-                toast('案件のデフォルト設定を読み込みました');
+                toast('案件設定を読み込みました');
             } catch (err) { toast(err.message, 'error'); }
+        },
+
+        applyAudienceDefaults() {
+            if (!this.audienceId) { this.audienceDefaults = null; return; }
+            const aud = this.projectAudiences.find(a => a.id == this.audienceId);
+            if (!aud) return;
+            this.audienceDefaults = aud;
+            this.campaigns.forEach(c => this.applyDefaults(c));
+            toast(`オーディエンス「${aud.name}」を適用しました`);
         },
 
         // Media helpers

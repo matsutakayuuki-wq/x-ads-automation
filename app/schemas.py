@@ -50,6 +50,38 @@ class ProjectCreate(BaseModel):
     credential_id: Optional[int] = None
     funding_instrument_id: Optional[str] = None
     conversion_tag_id: Optional[str] = None
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    credential_id: Optional[int] = None
+    funding_instrument_id: Optional[str] = None
+    conversion_tag_id: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class ProjectResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    credential_id: Optional[int]
+    funding_instrument_id: Optional[str]
+    conversion_tag_id: Optional[str]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# =============================================================================
+# Audience
+# =============================================================================
+
+class AudienceCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
     default_objective: str = "WEBSITE_CLICKS"
     default_placements: Optional[str] = None
     default_platforms: Optional[str] = None
@@ -64,18 +96,29 @@ class ProjectCreate(BaseModel):
     default_audience_expansion: Optional[str] = None
 
 
-class ProjectUpdate(ProjectCreate):
-    name: Optional[str] = None  # type: ignore[assignment]
+class AudienceUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    default_objective: Optional[str] = None
+    default_placements: Optional[str] = None
+    default_platforms: Optional[str] = None
+    default_gender: Optional[str] = None
+    default_age_ranges: Optional[str] = None
+    default_locations: Optional[str] = None
+    default_languages: Optional[str] = None
+    default_bid_strategy: Optional[str] = None
+    default_daily_budget: Optional[int] = None
+    default_bid_amount: Optional[int] = None
+    currency: Optional[str] = None
+    default_audience_expansion: Optional[str] = None
     is_active: Optional[bool] = None
 
 
-class ProjectResponse(BaseModel):
+class AudienceResponse(BaseModel):
     id: int
+    project_id: int
     name: str
     description: Optional[str]
-    credential_id: Optional[int]
-    funding_instrument_id: Optional[str]
-    conversion_tag_id: Optional[str]
     default_objective: str
     default_placements: Optional[str]
     default_platforms: Optional[str]

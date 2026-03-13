@@ -1,4 +1,4 @@
-"""案件管理"""
+"""案件管理 & オーディエンス管理"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,8 +8,15 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user, get_current_user_or_redirect
 from app.database import get_db
-from app.models import Project, User, XAdsCredential
-from app.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.models import Audience, Project, User, XAdsCredential
+from app.schemas import (
+    AudienceCreate,
+    AudienceResponse,
+    AudienceUpdate,
+    ProjectCreate,
+    ProjectResponse,
+    ProjectUpdate,
+)
 
 router = APIRouter(tags=["projects"])
 templates = Jinja2Templates(directory="app/templates")
@@ -23,6 +30,16 @@ def _get_user_project(db: Session, user: User, project_id: int) -> Project:
     if not project:
         raise HTTPException(status_code=404, detail="案件が見つかりません")
     return project
+
+
+def _get_user_audience(db: Session, user: User, audience_id: int) -> Audience:
+    audience = db.query(Audience).join(Project).filter(
+        Audience.id == audience_id,
+        Project.user_id == user.id,
+    ).first()
+    if not audience:
+        raise HTTPException(status_code=404, detail="オーディエンスが見つかりません")
+    return audience
 
 
 # --- ページ ---
@@ -69,7 +86,7 @@ def project_detail_page(
     })
 
 
-# --- API ---
+# --- Project API ---
 @router.get("/api/projects")
 def list_projects(
     db: Session = Depends(get_db),
@@ -87,7 +104,6 @@ def create_project(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    # credential_id の所有者チェック
     if data.credential_id:
         cred = db.query(XAdsCredential).filter(
             XAdsCredential.id == data.credential_id,
@@ -142,5 +158,74 @@ def delete_project(
 ):
     project = _get_user_project(db, user, project_id)
     db.delete(project)
+    db.commit()
+    return {"ok": True}
+
+
+# --- Audience API ---
+@router.get("/api/projects/{project_id}/audiences")
+def list_audiences(
+    project_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    project = _get_user_project(db, user, project_id)
+    return [AudienceResponse.model_validate(a) for a in project.audiences]
+
+
+@router.post("/api/projects/{project_id}/audiences")
+def create_audience(
+    project_id: int,
+    data: AudienceCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    project = _get_user_project(db, user, project_id)
+    audience = Audience(
+        project_id=project.id,
+        **data.model_dump(),
+    )
+    db.add(audience)
+    db.commit()
+    db.refresh(audience)
+    return AudienceResponse.model_validate(audience)
+
+
+@router.get("/api/audiences/{audience_id}")
+def get_audience(
+    audience_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    audience = _get_user_audience(db, user, audience_id)
+    return AudienceResponse.model_validate(audience)
+
+
+@router.put("/api/audiences/{audience_id}")
+def update_audience(
+    audience_id: int,
+    data: AudienceUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    audience = _get_user_audience(db, user, audience_id)
+
+    update_data = data.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(audience, key, value)
+
+    db.commit()
+    db.refresh(audience)
+    return AudienceResponse.model_validate(audience)
+
+
+@router.delete("/api/audiences/{audience_id}")
+def delete_audience(
+    audience_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    audience = _get_user_audience(db, user, audience_id)
+    db.delete(audience)
     db.commit()
     return {"ok": True}

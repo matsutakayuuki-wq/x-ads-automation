@@ -16,8 +16,8 @@
         <button @click="deleteProject()" class="px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">案件を削除</button>
     </div>
 
+    <!-- Basic Info -->
     <form @submit.prevent="saveProject()">
-        <!-- Basic Info -->
         <div class="glass rounded-2xl p-5 mb-4">
             <h2 class="text-sm font-semibold text-white mb-4">基本情報</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -81,179 +81,225 @@
             </div>
         </div>
 
-        <!-- Default Targeting -->
-        <div class="glass rounded-2xl p-5 mb-4">
-            <h2 class="text-sm font-semibold text-white mb-4">デフォルトターゲティング</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">目的</label>
-                    <select x-model="form.default_objective" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="WEBSITE_CLICKS">ウェブサイトクリック</option>
-                        <option value="WEBSITE_CONVERSIONS">ウェブサイトコンバージョン</option>
-                        <option value="APP_INSTALLS">アプリインストール</option>
-                        <option value="ENGAGEMENTS">エンゲージメント</option>
-                        <option value="REACH">リーチ</option>
-                        <option value="VIDEO_VIEWS">動画再生</option>
-                        <option value="FOLLOWERS">フォロワー</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">性別</label>
-                    <select x-model="form.default_gender" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="">指定なし</option>
-                        <option value="MALE">Male</option>
-                        <option value="FEMALE">Female</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">入札戦略</label>
-                    <select x-model="form.default_bid_strategy" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="AUTO">自動入札</option>
-                        <option value="TARGET">目標コスト</option>
-                        <option value="MAX">上限入札</option>
-                    </select>
-                </div>
-
-                <!-- Placements (チェックボックス) -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Placements</label>
-                    <div class="flex flex-wrap gap-1.5">
-                        <template x-for="opt in placementOptions" :key="opt.value">
-                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
-                                   :class="isChecked('default_placements', opt.value) ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
-                                <input type="checkbox" class="hidden"
-                                       :checked="isChecked('default_placements', opt.value)"
-                                       @change="toggleJson('default_placements', opt.value)">
-                                <span x-text="opt.label"></span>
-                            </label>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- Platforms (チェックボックス) -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Platforms</label>
-                    <div class="flex flex-wrap gap-1.5">
-                        <template x-for="opt in platformOptions" :key="opt.value">
-                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
-                                   :class="isChecked('default_platforms', opt.value) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
-                                <input type="checkbox" class="hidden"
-                                       :checked="isChecked('default_platforms', opt.value)"
-                                       @change="toggleJson('default_platforms', opt.value)">
-                                <span x-text="opt.label"></span>
-                            </label>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- Languages (チェックボックス) -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Languages</label>
-                    <div class="flex flex-wrap gap-1.5">
-                        <template x-for="opt in languageOptions" :key="opt.value">
-                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
-                                   :class="isChecked('default_languages', opt.value) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
-                                <input type="checkbox" class="hidden"
-                                       :checked="isChecked('default_languages', opt.value)"
-                                       @change="toggleJson('default_languages', opt.value)">
-                                <span x-text="opt.label"></span>
-                            </label>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- Age Ranges (下限〜上限ドロップダウン) -->
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Age Ranges</label>
-                    <div class="flex items-center gap-2">
-                        <select x-model="ageMin" @change="onAgeMinChange()" class="input-field px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                            <option value="">--</option>
-                            <option value="13">13</option>
-                            <option value="20">20</option>
-                            <option value="30">30</option>
-                            <option value="40">40</option>
-                        </select>
-                        <span class="text-gray-500 text-xs">〜</span>
-                        <select x-model="ageMax" @change="updateAgeRange()" class="input-field px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                            <option value="">--</option>
-                            <template x-for="opt in ageMaxOptions" :key="opt.value">
-                                <option :value="opt.value" x-text="opt.label"></option>
-                            </template>
-                        </select>
-                    </div>
-                    <p class="text-[10px] text-gray-600 mt-1" x-show="ageMin && ageMax" x-text="'→ ' + (form.default_age_ranges || '')"></p>
-                </div>
-
-                <!-- Locations (日本 + 47都道府県チェックボックス) -->
-                <div class="md:col-span-2 lg:col-span-3">
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Locations</label>
-                    <!-- 日本全国 -->
-                    <div class="mb-2">
-                        <label class="inline-flex items-center px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all select-none"
-                               :class="isChecked('default_locations', '06ef846bfc783874') ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
-                            <input type="checkbox" class="hidden"
-                                   :checked="isChecked('default_locations', '06ef846bfc783874')"
-                                   @change="toggleJson('default_locations', '06ef846bfc783874')">
-                            <span>日本（全国）</span>
-                        </label>
-                    </div>
-                    <!-- 都道府県 -->
-                    <div class="flex flex-wrap gap-1.5">
-                        <template x-for="opt in locationOptions" :key="opt.value">
-                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
-                                   :class="isChecked('default_locations', opt.value) ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
-                                <input type="checkbox" class="hidden"
-                                       :checked="isChecked('default_locations', opt.value)"
-                                       @change="toggleJson('default_locations', opt.value)">
-                                <span x-text="opt.label"></span>
-                            </label>
-                        </template>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">オーディエンス拡張</label>
-                    <select x-model="form.default_audience_expansion" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="">なし</option>
-                        <option value="EXPANDED">拡張</option>
-                        <option value="NARROW">限定</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Budget Defaults -->
-        <div class="glass rounded-2xl p-5 mb-4">
-            <h2 class="text-sm font-semibold text-white mb-4">デフォルト予算</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">日予算（JPY）</label>
-                    <input x-model.number="form.default_daily_budget" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="5000">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">デフォルト入札額（JPY）</label>
-                    <input x-model.number="form.default_bid_amount" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="180">
-                </div>
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">通貨</label>
-                    <select x-model="form.currency" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="JPY">JPY</option>
-                        <option value="USD">USD</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Save -->
-        <div class="flex justify-end">
+        <!-- Save Project -->
+        <div class="flex justify-end mb-6">
             <button type="submit" :disabled="saving" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[13px] font-medium rounded-xl transition-colors">
-                <span x-show="!saving">変更を保存</span>
+                <span x-show="!saving">基本情報を保存</span>
                 <span x-show="saving">保存中...</span>
             </button>
         </div>
     </form>
 
-    <!-- LP Management (quick view + link to full page) -->
+    <!-- Audiences Section -->
+    <div class="space-y-4">
+        <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-white">オーディエンス設定</h2>
+            <button @click="addAudience()" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center">
+                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                オーディエンス追加
+            </button>
+        </div>
+
+        <template x-if="audiences.length === 0">
+            <div class="glass rounded-2xl p-6 text-center">
+                <p class="text-sm text-gray-500">オーディエンスがまだありません</p>
+                <button @click="addAudience()" class="mt-3 px-4 py-2 bg-sky-600/10 text-sky-400 text-sm rounded-xl hover:bg-sky-600/20 transition-colors">最初のオーディエンスを作成</button>
+            </div>
+        </template>
+
+        <template x-for="(aud, audIdx) in audiences" :key="aud.id">
+            <div class="glass rounded-2xl p-5" :id="'audience-' + aud.id">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                        <h3 class="text-sm font-semibold text-white" x-text="aud.name"></h3>
+                        <span class="badge" :class="aud.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-gray-500/10 text-gray-400'" x-text="aud.is_active ? '有効' : '無効'"></span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button @click="aud._expanded = !aud._expanded" class="text-[10px] text-gray-400 hover:text-white transition-colors" x-text="aud._expanded ? '折りたたむ' : '展開'"></button>
+                        <button @click="deleteAudience(aud.id, audIdx)" class="text-[10px] text-red-400 hover:text-red-300 transition-colors">削除</button>
+                    </div>
+                </div>
+
+                <div x-show="aud._expanded" x-cloak>
+                    <!-- Audience Name & Description -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">オーディエンス名</label>
+                            <input x-model="aud.name" type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">説明</label>
+                            <input x-model="aud.description" type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600" placeholder="メモ">
+                        </div>
+                    </div>
+
+                    <!-- Targeting -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">目的</label>
+                            <select x-model="aud.default_objective" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                                <option value="WEBSITE_CLICKS">ウェブサイトクリック</option>
+                                <option value="WEBSITE_CONVERSIONS">ウェブサイトコンバージョン</option>
+                                <option value="APP_INSTALLS">アプリインストール</option>
+                                <option value="ENGAGEMENTS">エンゲージメント</option>
+                                <option value="REACH">リーチ</option>
+                                <option value="VIDEO_VIEWS">動画再生</option>
+                                <option value="FOLLOWERS">フォロワー</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">性別</label>
+                            <select x-model="aud.default_gender" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                                <option value="">指定なし</option>
+                                <option value="MALE">Male</option>
+                                <option value="FEMALE">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">入札戦略</label>
+                            <select x-model="aud.default_bid_strategy" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                                <option value="AUTO">自動入札</option>
+                                <option value="TARGET">目標コスト</option>
+                                <option value="MAX">上限入札</option>
+                            </select>
+                        </div>
+
+                        <!-- Placements -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Placements</label>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="opt in placementOptions" :key="opt.value">
+                                    <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                           :class="isChecked(aud, 'default_placements', opt.value) ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                        <input type="checkbox" class="hidden"
+                                               :checked="isChecked(aud, 'default_placements', opt.value)"
+                                               @change="toggleJson(aud, 'default_placements', opt.value)">
+                                        <span x-text="opt.label"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Platforms -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Platforms</label>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="opt in platformOptions" :key="opt.value">
+                                    <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                           :class="isChecked(aud, 'default_platforms', opt.value) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                        <input type="checkbox" class="hidden"
+                                               :checked="isChecked(aud, 'default_platforms', opt.value)"
+                                               @change="toggleJson(aud, 'default_platforms', opt.value)">
+                                        <span x-text="opt.label"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Languages -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Languages</label>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="opt in languageOptions" :key="opt.value">
+                                    <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                           :class="isChecked(aud, 'default_languages', opt.value) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                        <input type="checkbox" class="hidden"
+                                               :checked="isChecked(aud, 'default_languages', opt.value)"
+                                               @change="toggleJson(aud, 'default_languages', opt.value)">
+                                        <span x-text="opt.label"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Age Ranges -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Age Ranges</label>
+                            <div class="flex items-center gap-2">
+                                <select :x-ref="'ageMin_' + aud.id" x-model="aud._ageMin" @change="onAgeMinChange(aud)" class="input-field px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                                    <option value="">--</option>
+                                    <option value="13">13</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="40">40</option>
+                                </select>
+                                <span class="text-gray-500 text-xs">〜</span>
+                                <select x-model="aud._ageMax" @change="updateAgeRange(aud)" class="input-field px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                                    <option value="">--</option>
+                                    <template x-for="opt in (ageMaxByMin[aud._ageMin] || [])" :key="opt.value">
+                                        <option :value="opt.value" x-text="opt.label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <p class="text-[10px] text-gray-600 mt-1" x-show="aud._ageMin && aud._ageMax" x-text="'→ ' + (aud.default_age_ranges || '')"></p>
+                        </div>
+
+                        <!-- Locations -->
+                        <div class="md:col-span-2 lg:col-span-3">
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Locations</label>
+                            <div class="mb-2">
+                                <label class="inline-flex items-center px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all select-none"
+                                       :class="isChecked(aud, 'default_locations', '06ef846bfc783874') ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                    <input type="checkbox" class="hidden"
+                                           :checked="isChecked(aud, 'default_locations', '06ef846bfc783874')"
+                                           @change="toggleJson(aud, 'default_locations', '06ef846bfc783874')">
+                                    <span>日本（全国）</span>
+                                </label>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="opt in locationOptions" :key="opt.value">
+                                    <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                           :class="isChecked(aud, 'default_locations', opt.value) ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                        <input type="checkbox" class="hidden"
+                                               :checked="isChecked(aud, 'default_locations', opt.value)"
+                                               @change="toggleJson(aud, 'default_locations', opt.value)">
+                                        <span x-text="opt.label"></span>
+                                    </label>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">オーディエンス拡張</label>
+                            <select x-model="aud.default_audience_expansion" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                                <option value="">なし</option>
+                                <option value="EXPANDED">拡張</option>
+                                <option value="NARROW">限定</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Budget -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">日予算（JPY）</label>
+                            <input x-model.number="aud.default_daily_budget" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="5000">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">デフォルト入札額（JPY）</label>
+                            <input x-model.number="aud.default_bid_amount" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="180">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">通貨</label>
+                            <select x-model="aud.currency" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                                <option value="JPY">JPY</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Save Audience -->
+                    <div class="flex justify-end">
+                        <button type="button" @click="saveAudience(aud)" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white text-[12px] font-medium rounded-xl transition-colors">
+                            オーディエンスを保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- LP Management -->
     <div class="glass rounded-2xl p-5">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-sm font-semibold text-white">LP（ランディングページ）</h2>
@@ -262,8 +308,6 @@
                 LP管理ページへ
             </a>
         </div>
-
-        <!-- LP List (read-only summary) -->
         <template x-if="landingPages.length === 0">
             <p class="text-sm text-gray-600 text-center py-4">LPはまだ登録されていません。<a href="/lp" class="text-sky-400 hover:text-sky-300">LP管理ページ</a>から追加してください。</p>
         </template>
@@ -294,12 +338,9 @@ function projectDetail() {
         fundingInstruments: [],
         conversionTags: [],
         landingPages: [],
-        init() {
-            this.initAgeRange();
-            this.loadLandingPages();
-        },
+        audiences: [],
 
-        // マルチセレクト選択肢
+        // Options
         placementOptions: [
             { value: 'TIMELINES', label: 'タイムライン' },
             { value: 'PROFILES', label: 'プロフィール' },
@@ -324,8 +365,7 @@ function projectDetail() {
             { value: 'th', label: 'ไทย' },
             { value: 'vi', label: 'Tiếng Việt' },
         ],
-        // 年齢範囲: 下限→上限オプション
-        _ageMaxByMin: {
+        ageMaxByMin: {
             '13': [
                 { value: '19', label: '19' },
                 { value: '29', label: '29' },
@@ -349,16 +389,12 @@ function projectDetail() {
                 { value: 'above', label: '以上' },
             ],
         },
-        // 下限+上限 → API値マッピング
         _ageRangeMap: {
             '13_19': 'AGE_13_TO_19', '13_29': 'AGE_13_TO_29', '13_34': 'AGE_13_TO_34', '13_39': 'AGE_13_TO_39',
             '20_29': 'AGE_20_TO_29', '20_34': 'AGE_20_TO_34', '20_39': 'AGE_20_TO_39', '20_49': 'AGE_20_TO_49', '20_above': 'AGE_OVER_20',
             '30_39': 'AGE_30_TO_39', '30_49': 'AGE_30_TO_49', '30_above': 'AGE_OVER_30',
             '40_49': 'AGE_40_TO_49', '40_above': 'AGE_OVER_50',
         },
-        ageMin: '',
-        ageMax: '',
-        ageMaxOptions: [],
         locationOptions: [
             { value: '0b89db31d164a17d', label: '北海道' },
             { value: '1de05e90db6fde15', label: '青森県' },
@@ -415,23 +451,28 @@ function projectDetail() {
             credential_id: '{{ project.credential_id or "" }}',
             funding_instrument_id: '{{ project.funding_instrument_id or "" }}',
             conversion_tag_id: '{{ project.conversion_tag_id or "" }}',
-            default_objective: '{{ project.default_objective }}',
-            default_placements: {{ project.default_placements|tojson }},
-            default_platforms: {{ project.default_platforms|tojson }},
-            default_gender: '{{ project.default_gender or "" }}',
-            default_age_ranges: {{ project.default_age_ranges|tojson }},
-            default_locations: {{ project.default_locations|tojson }},
-            default_languages: {{ project.default_languages|tojson }},
-            default_bid_strategy: '{{ project.default_bid_strategy }}',
-            default_daily_budget: {{ project.default_daily_budget or 'null' }},
-            default_bid_amount: {{ project.default_bid_amount or 'null' }},
-            currency: '{{ project.currency }}',
-            default_audience_expansion: '{{ project.default_audience_expansion or "" }}',
         },
 
-        // JSON配列フィールドのチェック状態を返す
-        isChecked(field, value) {
-            const raw = this.form[field];
+        async init() {
+            await Promise.all([this.loadAudiences(), this.loadLandingPages()]);
+        },
+
+        async loadAudiences() {
+            try {
+                const raw = await api('/api/projects/{{ project.id }}/audiences');
+                this.audiences = raw.map(a => {
+                    a._expanded = true;
+                    a._ageMin = '';
+                    a._ageMax = '';
+                    this.initAgeRange(a);
+                    return a;
+                });
+            } catch {}
+        },
+
+        // JSON helpers (now per-audience)
+        isChecked(aud, field, value) {
+            const raw = aud[field];
             if (!raw) return false;
             try {
                 const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -439,19 +480,53 @@ function projectDetail() {
             } catch { return false; }
         },
 
-        // JSON配列フィールドの値をトグル
-        toggleJson(field, value) {
+        toggleJson(aud, field, value) {
             let arr = [];
             try {
-                const raw = this.form[field];
+                const raw = aud[field];
                 arr = raw ? (typeof raw === 'string' ? JSON.parse(raw) : [...raw]) : [];
             } catch { arr = []; }
             const idx = arr.indexOf(value);
             if (idx >= 0) arr.splice(idx, 1);
             else arr.push(value);
-            this.form[field] = arr.length > 0 ? JSON.stringify(arr) : '';
+            aud[field] = arr.length > 0 ? JSON.stringify(arr) : '';
         },
 
+        // Age range helpers
+        initAgeRange(aud) {
+            const raw = aud.default_age_ranges;
+            if (!raw) return;
+            try {
+                const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (!Array.isArray(arr) || arr.length === 0) return;
+                const val = arr[0];
+                for (const [key, apiVal] of Object.entries(this._ageRangeMap)) {
+                    if (apiVal === val) {
+                        const [min, max] = key.split('_');
+                        aud._ageMin = min;
+                        aud._ageMax = max;
+                        return;
+                    }
+                }
+            } catch {}
+        },
+
+        onAgeMinChange(aud) {
+            aud._ageMax = '';
+            this.updateAgeRange(aud);
+        },
+
+        updateAgeRange(aud) {
+            if (!aud._ageMin || !aud._ageMax) {
+                aud.default_age_ranges = '';
+                return;
+            }
+            const key = aud._ageMin + '_' + aud._ageMax;
+            const apiVal = this._ageRangeMap[key];
+            aud.default_age_ranges = apiVal ? JSON.stringify([apiVal]) : '';
+        },
+
+        // CRUD
         async saveProject() {
             this.saving = true;
             try {
@@ -460,10 +535,45 @@ function projectDetail() {
                 else data.credential_id = null;
                 await api('/api/projects/{{ project.id }}', 'PUT', data);
                 toast('保存しました');
-                setTimeout(() => window.location.href = '/projects', 500);
             } catch (err) { toast(err.message, 'error'); }
             this.saving = false;
         },
+
+        async addAudience() {
+            try {
+                const result = await api('/api/projects/{{ project.id }}/audiences', 'POST', { name: '新規オーディエンス' });
+                result._expanded = true;
+                result._ageMin = '';
+                result._ageMax = '';
+                this.audiences.push(result);
+                toast('オーディエンスを追加しました');
+            } catch (err) { toast(err.message, 'error'); }
+        },
+
+        async saveAudience(aud) {
+            try {
+                const data = { ...aud };
+                delete data._expanded;
+                delete data._ageMin;
+                delete data._ageMax;
+                delete data.id;
+                delete data.project_id;
+                delete data.created_at;
+                delete data.updated_at;
+                await api(`/api/audiences/${aud.id}`, 'PUT', data);
+                toast(`「${aud.name}」を保存しました`);
+            } catch (err) { toast(err.message, 'error'); }
+        },
+
+        async deleteAudience(id, idx) {
+            if (!confirm('このオーディエンスを削除しますか？')) return;
+            try {
+                await api(`/api/audiences/${id}`, 'DELETE');
+                this.audiences.splice(idx, 1);
+                toast('削除しました');
+            } catch (err) { toast(err.message, 'error'); }
+        },
+
         async deleteProject() {
             if (!confirm('この案件を削除しますか？')) return;
             try {
@@ -472,6 +582,7 @@ function projectDetail() {
                 setTimeout(() => location.href = '/projects', 500);
             } catch (err) { toast(err.message, 'error'); }
         },
+
         async syncFromApi() {
             if (!this.form.credential_id) { toast('先にAPI認証情報を選択してください', 'error'); return; }
             this.syncing = true;
@@ -491,44 +602,6 @@ function projectDetail() {
             this.conversionTags = [];
         },
 
-        // 年齢範囲: 初期値からドロップダウンを復元
-        initAgeRange() {
-            const raw = this.form.default_age_ranges;
-            if (!raw) return;
-            try {
-                const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
-                if (!Array.isArray(arr) || arr.length === 0) return;
-                const val = arr[0]; // 単一値
-                // 逆引き
-                for (const [key, apiVal] of Object.entries(this._ageRangeMap)) {
-                    if (apiVal === val) {
-                        const [min, max] = key.split('_');
-                        this.ageMin = min;
-                        this.ageMaxOptions = this._ageMaxByMin[min] || [];
-                        this.ageMax = max;
-                        return;
-                    }
-                }
-            } catch {}
-        },
-
-        onAgeMinChange() {
-            this.ageMaxOptions = this._ageMaxByMin[this.ageMin] || [];
-            this.ageMax = '';
-            this.updateAgeRange();
-        },
-
-        updateAgeRange() {
-            if (!this.ageMin || !this.ageMax) {
-                this.form.default_age_ranges = '';
-                return;
-            }
-            const key = this.ageMin + '_' + this.ageMax;
-            const apiVal = this._ageRangeMap[key];
-            this.form.default_age_ranges = apiVal ? JSON.stringify([apiVal]) : '';
-        },
-
-        // LP管理（表示のみ — 編集はLP管理ページで）
         async loadLandingPages() {
             try {
                 this.landingPages = await api('/api/projects/{{ project.id }}/landing-pages');

@@ -14,32 +14,64 @@
         </button>
     </div>
 
-    <!-- Project List -->
+    <!-- Project List (grouped by project, audiences as cards) -->
     {% if projects %}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {% for project in projects %}
-        <a href="/projects/{{ project.id }}" class="glass rounded-2xl p-5 hover:border-sky-500/20 transition-all group">
-            <div class="flex items-start justify-between">
-                <div>
-                    <h3 class="text-sm font-medium text-white group-hover:text-sky-400 transition-colors">{{ project.name }}</h3>
-                    {% if project.description %}
-                    <p class="text-xs text-gray-500 mt-1">{{ project.description }}</p>
-                    {% endif %}
-                </div>
+    {% for project in projects %}
+    <div class="space-y-3">
+        <!-- Project Header -->
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <a href="/projects/{{ project.id }}" class="text-sm font-semibold text-white hover:text-sky-400 transition-colors">{{ project.name }}</a>
+                {% if project.description %}
+                <span class="text-xs text-gray-500">{{ project.description }}</span>
+                {% endif %}
                 <span class="badge {% if project.is_active %}bg-emerald-500/10 text-emerald-400{% else %}bg-gray-500/10 text-gray-400{% endif %}">
                     {{ '有効' if project.is_active else '無効' }}
                 </span>
             </div>
-            <div class="flex items-center space-x-4 mt-3 text-[11px] text-gray-500">
-                <span>{{ project.default_objective }}</span>
-                <span>{{ project.currency }}</span>
-                {% if project.default_daily_budget %}
-                <span>予算: {{ project.default_daily_budget|string }} {{ project.currency }}/day</span>
-                {% endif %}
+            <div class="flex items-center space-x-2">
+                <a href="/projects/{{ project.id }}" class="px-2 py-1 text-[10px] text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">設定</a>
+                <button @click="openAudienceModal({{ project.id }})" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center">
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    オーディエンス追加
+                </button>
             </div>
-        </a>
-        {% endfor %}
+        </div>
+
+        <!-- Audience Cards -->
+        {% if project.audiences %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for aud in project.audiences %}
+            <a href="/projects/{{ project.id }}#audience-{{ aud.id }}" class="glass rounded-2xl p-5 hover:border-sky-500/20 transition-all group">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-sm font-medium text-white group-hover:text-sky-400 transition-colors">{{ aud.name }}</h3>
+                        {% if aud.description %}
+                        <p class="text-xs text-gray-500 mt-1">{{ aud.description }}</p>
+                        {% endif %}
+                    </div>
+                    <span class="badge {% if aud.is_active %}bg-emerald-500/10 text-emerald-400{% else %}bg-gray-500/10 text-gray-400{% endif %}">
+                        {{ '有効' if aud.is_active else '無効' }}
+                    </span>
+                </div>
+                <div class="flex items-center space-x-4 mt-3 text-[11px] text-gray-500">
+                    <span>{{ aud.default_objective }}</span>
+                    <span>{{ aud.currency }}</span>
+                    {% if aud.default_daily_budget %}
+                    <span>予算: {{ aud.default_daily_budget|string }} {{ aud.currency }}/day</span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="glass rounded-2xl p-6 text-center">
+            <p class="text-xs text-gray-500">オーディエンスが未作成です</p>
+            <button @click="openAudienceModal({{ project.id }})" class="mt-2 text-xs text-sky-400 hover:text-sky-300">最初のオーディエンスを作成</button>
+        </div>
+        {% endif %}
     </div>
+    {% endfor %}
     {% else %}
     <div class="glass rounded-2xl p-8 text-center">
         <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z"/></svg>
@@ -48,7 +80,7 @@
     </div>
     {% endif %}
 
-    <!-- Create Modal -->
+    <!-- Create Project Modal -->
     <div x-show="showModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showModal = false">
         <div class="bg-[#111114] border border-white/[0.06] rounded-2xl p-6 w-full max-w-md" @click.stop>
             <div class="flex items-center justify-between mb-5">
@@ -84,6 +116,34 @@
             </form>
         </div>
     </div>
+
+    <!-- Create Audience Modal -->
+    <div x-show="showAudienceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="showAudienceModal = false">
+        <div class="bg-[#111114] border border-white/[0.06] rounded-2xl p-6 w-full max-w-md" @click.stop>
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-base font-semibold text-white">オーディエンス追加</h3>
+                <button @click="showAudienceModal = false" class="text-gray-600 hover:text-gray-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <form @submit.prevent="createAudience()">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">オーディエンス名</label>
+                        <input x-model="audForm.name" type="text" required placeholder="e.g. 年齢のみ, 基本, 男性20代" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white placeholder-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">説明（任意）</label>
+                        <input x-model="audForm.description" type="text" placeholder="メモ" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white placeholder-gray-600">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" @click="showAudienceModal = false" class="px-4 py-2 text-[13px] text-gray-500 hover:text-white transition-colors">キャンセル</button>
+                    <button type="submit" :disabled="audSaving" class="px-5 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[13px] font-medium rounded-xl transition-colors">作成</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}
 {% block scripts %}
@@ -93,6 +153,12 @@ function projectsApp() {
         showModal: false,
         saving: false,
         form: { name: '', description: '', credential_id: '' },
+
+        showAudienceModal: false,
+        audSaving: false,
+        audProjectId: null,
+        audForm: { name: '', description: '' },
+
         async createProject() {
             this.saving = true;
             try {
@@ -104,7 +170,23 @@ function projectsApp() {
                 setTimeout(() => window.location.href = '/projects/' + result.id, 500);
             } catch (err) { toast(err.message, 'error'); }
             this.saving = false;
-        }
+        },
+
+        openAudienceModal(projectId) {
+            this.audProjectId = projectId;
+            this.audForm = { name: '', description: '' };
+            this.showAudienceModal = true;
+        },
+
+        async createAudience() {
+            this.audSaving = true;
+            try {
+                await api(`/api/projects/${this.audProjectId}/audiences`, 'POST', this.audForm);
+                toast('オーディエンスを作成しました');
+                setTimeout(() => location.reload(), 500);
+            } catch (err) { toast(err.message, 'error'); }
+            this.audSaving = false;
+        },
     };
 }
 </script>

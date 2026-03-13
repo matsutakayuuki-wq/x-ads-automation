@@ -80,6 +80,45 @@ def _run_migrations():
         _ensure_column(conn, inspector, "submission_campaigns", "website_card_cta",
                         "VARCHAR(50)")
 
+        # --- Audiences migration: projects のターゲティングデータを audiences に移行 ---
+        tables = inspector.get_table_names()
+        if "audiences" in tables and "projects" in tables:
+            # projects テーブルに default_objective カラムがあれば移行対象
+            proj_cols = [c["name"] for c in inspector.get_columns("projects")]
+            if "default_objective" in proj_cols:
+                # まだ audiences が空のプロジェクトのみ移行
+                rows = conn.execute(text(
+                    "SELECT p.id, p.name, p.default_objective, p.default_placements, "
+                    "p.default_platforms, p.default_gender, p.default_age_ranges, "
+                    "p.default_locations, p.default_languages, p.default_bid_strategy, "
+                    "p.default_daily_budget, p.default_bid_amount, p.currency, "
+                    "p.default_audience_expansion "
+                    "FROM projects p "
+                    "WHERE NOT EXISTS (SELECT 1 FROM audiences a WHERE a.project_id = p.id)"
+                )).fetchall()
+                for row in rows:
+                    conn.execute(text(
+                        "INSERT INTO audiences "
+                        "(project_id, name, default_objective, default_placements, "
+                        "default_platforms, default_gender, default_age_ranges, "
+                        "default_locations, default_languages, default_bid_strategy, "
+                        "default_daily_budget, default_bid_amount, currency, "
+                        "default_audience_expansion, is_active) "
+                        "VALUES (:pid, :name, :obj, :plc, :plt, :gen, :age, "
+                        ":loc, :lang, :bid, :budget, :bidamt, :cur, :exp, 1)"
+                    ), {
+                        "pid": row[0], "name": row[1] or "デフォルト",
+                        "obj": row[2] or "WEBSITE_CLICKS",
+                        "plc": row[3], "plt": row[4], "gen": row[5],
+                        "age": row[6], "loc": row[7], "lang": row[8],
+                        "bid": row[9] or "AUTO",
+                        "budget": row[10], "bidamt": row[11],
+                        "cur": row[12] or "JPY", "exp": row[13],
+                    })
+                if rows:
+                    conn.commit()
+                    logger.info("Migration: migrated %d projects' targeting to audiences", len(rows))
+
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 

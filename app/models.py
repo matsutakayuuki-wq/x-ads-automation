@@ -201,6 +201,48 @@ class Project(Base):
     landing_pages: Mapped[List[LandingPage]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
+    audiences: Mapped[List[Audience]] = relationship(
+        back_populates="project", cascade="all, delete-orphan",
+        order_by="Audience.created_at"
+    )
+
+
+# =============================================================================
+# 3.5 Audience（オーディエンス設定 — 案件ごとに複数作成可能）
+# =============================================================================
+
+class Audience(Base):
+    """案件ごとのオーディエンス（ターゲティング・予算プリセット）"""
+    __tablename__ = "audiences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # ターゲティング設定
+    default_objective: Mapped[str] = mapped_column(String(50), default="WEBSITE_CLICKS")
+    default_placements: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    default_platforms: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    default_gender: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    default_age_ranges: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    default_locations: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    default_languages: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    default_bid_strategy: Mapped[str] = mapped_column(String(50), default="AUTO")
+    default_daily_budget: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # JPY
+    default_bid_amount: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # JPY
+    currency: Mapped[str] = mapped_column(String(10), default="JPY")
+    default_audience_expansion: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_jst)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=now_jst, onupdate=now_jst
+    )
+
+    project: Mapped[Project] = relationship(back_populates="audiences")
 
 
 # =============================================================================
