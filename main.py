@@ -96,6 +96,8 @@ def _run_migrations():
                     "FROM projects p "
                     "WHERE NOT EXISTS (SELECT 1 FROM audiences a WHERE a.project_id = p.id)"
                 )).fetchall()
+                from datetime import datetime, timezone, timedelta
+                _now = datetime.now(timezone(timedelta(hours=9)))
                 for row in rows:
                     conn.execute(text(
                         "INSERT INTO audiences "
@@ -103,9 +105,9 @@ def _run_migrations():
                         "default_platforms, default_gender, default_age_ranges, "
                         "default_locations, default_languages, default_bid_strategy, "
                         "default_daily_budget, default_bid_amount, currency, "
-                        "default_audience_expansion, is_active) "
+                        "default_audience_expansion, is_active, created_at, updated_at) "
                         "VALUES (:pid, :name, :obj, :plc, :plt, :gen, :age, "
-                        ":loc, :lang, :bid, :budget, :bidamt, :cur, :exp, 1)"
+                        ":loc, :lang, :bid, :budget, :bidamt, :cur, :exp, :active, :now, :now)"
                     ), {
                         "pid": row[0], "name": row[1] or "デフォルト",
                         "obj": row[2] or "WEBSITE_CLICKS",
@@ -114,6 +116,7 @@ def _run_migrations():
                         "bid": row[9] or "AUTO",
                         "budget": row[10], "bidamt": row[11],
                         "cur": row[12] or "JPY", "exp": row[13],
+                        "active": True, "now": _now,
                     })
                 if rows:
                     conn.commit()
