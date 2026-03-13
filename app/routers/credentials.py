@@ -177,6 +177,61 @@ def get_funding_instruments(
         return {"ok": False, "error": str(e)}
 
 
+@router.post("/api/credentials/{credential_id}/test-line-item")
+def test_line_item(
+    credential_id: int,
+    request_body: dict,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Line Item作成テスト（デバッグ用）- 最小パラメータから段階的にテスト"""
+    cred = _get_user_credential(db, user, credential_id)
+
+    from app.services.x_ads_client import XAdsClient, XAdsApiError
+
+    client = XAdsClient(
+        api_key=cred.api_key,
+        api_secret=cred.api_secret,
+        access_token=cred.access_token,
+        access_secret=cred.access_secret,
+    )
+    account_id = cred.ads_account_id
+
+    # リクエストボディのparamsをそのまま送信
+    params = request_body.get("params", {})
+    try:
+        result = client.create_line_item(account_id, params)
+        return {"ok": True, "data": result}
+    except XAdsApiError as e:
+        return {"ok": False, "error": str(e), "status_code": e.status_code, "errors": e.errors}
+
+
+@router.get("/api/credentials/{credential_id}/targeting-locations")
+def get_targeting_locations(
+    credential_id: int,
+    location_type: str = "COUNTRIES",
+    q: str = "",
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """ロケーションターゲティング選択肢を取得"""
+    cred = _get_user_credential(db, user, credential_id)
+
+    from app.services.x_ads_client import XAdsClient, XAdsApiError
+
+    try:
+        client = XAdsClient(
+            api_key=cred.api_key,
+            api_secret=cred.api_secret,
+            access_token=cred.access_token,
+            access_secret=cred.access_secret,
+        )
+        locations = client.get_targeting_locations(query=q, location_type=location_type)
+        return {"ok": True, "data": locations}
+    except XAdsApiError as e:
+        return {"ok": False, "error": str(e)}
+
+
 @router.get("/api/credentials/{credential_id}/conversion-tags")
 def get_conversion_tags(
     credential_id: int,

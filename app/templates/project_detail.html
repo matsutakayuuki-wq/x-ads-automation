@@ -10,32 +10,32 @@
             </a>
             <div>
                 <h1 class="text-xl font-semibold text-white">{{ project.name }}</h1>
-                <p class="text-sm text-gray-500 mt-0.5">Project Settings</p>
+                <p class="text-sm text-gray-500 mt-0.5">案件設定</p>
             </div>
         </div>
-        <button @click="deleteProject()" class="px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">Delete Project</button>
+        <button @click="deleteProject()" class="px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">案件を削除</button>
     </div>
 
     <form @submit.prevent="saveProject()">
         <!-- Basic Info -->
         <div class="glass rounded-2xl p-5 mb-4">
-            <h2 class="text-sm font-semibold text-white mb-4">Basic Info</h2>
+            <h2 class="text-sm font-semibold text-white mb-4">基本情報</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Name</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">案件名</label>
                     <input x-model="form.name" type="text" required class="input-field w-full px-3 py-2 rounded-xl text-sm text-white">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">API Credential</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">API認証情報</label>
                     <select x-model="form.credential_id" @change="onCredentialChange()" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="">-- Select --</option>
+                        <option value="">-- 選択 --</option>
                         {% for cred in credentials %}
                         <option value="{{ cred.id }}" {% if project.credential_id == cred.id %}selected{% endif %}>{{ cred.name }} ({{ cred.ads_account_id }})</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="md:col-span-2">
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Description</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">説明</label>
                     <input x-model="form.description" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white placeholder-gray-600">
                 </div>
             </div>
@@ -44,17 +44,17 @@
         <!-- Payment & Tracking -->
         <div class="glass rounded-2xl p-5 mb-4">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-sm font-semibold text-white">Payment & Tracking</h2>
+                <h2 class="text-sm font-semibold text-white">支払い・トラッキング</h2>
                 <button type="button" @click="syncFromApi()" :disabled="syncing" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors">
-                    <span x-show="!syncing">Sync from API</span>
-                    <span x-show="syncing">Syncing...</span>
+                    <span x-show="!syncing">APIから同期</span>
+                    <span x-show="syncing">同期中...</span>
                 </button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Funding Instrument ID</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">支払い方法ID</label>
                     <select x-model="form.funding_instrument_id" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="">-- Select --</option>
+                        <option value="">-- 選択 --</option>
                         <template x-for="fi in fundingInstruments" :key="fi.id">
                             <option :value="fi.id" x-text="fi.description || fi.id" :selected="fi.id === form.funding_instrument_id"></option>
                         </template>
@@ -62,13 +62,13 @@
                         <option value="{{ project.funding_instrument_id }}" selected>{{ project.funding_instrument_id }} (saved)</option>
                         {% endif %}
                     </select>
-                    <p class="text-[10px] text-gray-600 mt-1">Or enter manually:</p>
+                    <p class="text-[10px] text-gray-600 mt-1">または手動入力:</p>
                     <input x-model="form.funding_instrument_id" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white mt-1" placeholder="e.g. i77332156">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Conversion Tag ID</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">コンバージョンタグID</label>
                     <select x-model="form.conversion_tag_id" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="">-- Select --</option>
+                        <option value="">-- 選択 --</option>
                         <template x-for="tag in conversionTags" :key="tag.id">
                             <option :value="tag.id" x-text="(tag.name || tag.type || '') + ' (' + tag.id + ')'" :selected="tag.id === form.conversion_tag_id"></option>
                         </template>
@@ -83,63 +83,140 @@
 
         <!-- Default Targeting -->
         <div class="glass rounded-2xl p-5 mb-4">
-            <h2 class="text-sm font-semibold text-white mb-4">Default Targeting</h2>
+            <h2 class="text-sm font-semibold text-white mb-4">デフォルトターゲティング</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Objective</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">目的</label>
                     <select x-model="form.default_objective" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="WEBSITE_CLICKS">Website Clicks</option>
-                        <option value="WEBSITE_CONVERSIONS">Website Conversions</option>
-                        <option value="APP_INSTALLS">App Installs</option>
-                        <option value="ENGAGEMENTS">Engagements</option>
-                        <option value="REACH">Reach</option>
-                        <option value="VIDEO_VIEWS">Video Views</option>
-                        <option value="FOLLOWERS">Followers</option>
+                        <option value="WEBSITE_CLICKS">ウェブサイトクリック</option>
+                        <option value="WEBSITE_CONVERSIONS">ウェブサイトコンバージョン</option>
+                        <option value="APP_INSTALLS">アプリインストール</option>
+                        <option value="ENGAGEMENTS">エンゲージメント</option>
+                        <option value="REACH">リーチ</option>
+                        <option value="VIDEO_VIEWS">動画再生</option>
+                        <option value="FOLLOWERS">フォロワー</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Gender</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">性別</label>
                     <select x-model="form.default_gender" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="">Any</option>
+                        <option value="">指定なし</option>
                         <option value="MALE">Male</option>
                         <option value="FEMALE">Female</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Bid Strategy</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">入札戦略</label>
                     <select x-model="form.default_bid_strategy" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="AUTO">Auto Bid</option>
-                        <option value="TARGET">Target Cost</option>
-                        <option value="MAX">Max Bid</option>
+                        <option value="AUTO">自動入札</option>
+                        <option value="TARGET">目標コスト</option>
+                        <option value="MAX">上限入札</option>
                     </select>
                 </div>
+
+                <!-- Placements (チェックボックス) -->
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Placements (JSON)</label>
-                    <input x-model="form.default_placements" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["TIMELINES","SEARCH_RESULTS","PROFILES"]'>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Placements</label>
+                    <div class="flex flex-wrap gap-1.5">
+                        <template x-for="opt in placementOptions" :key="opt.value">
+                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                   :class="isChecked('default_placements', opt.value) ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                <input type="checkbox" class="hidden"
+                                       :checked="isChecked('default_placements', opt.value)"
+                                       @change="toggleJson('default_placements', opt.value)">
+                                <span x-text="opt.label"></span>
+                            </label>
+                        </template>
+                    </div>
                 </div>
+
+                <!-- Platforms (チェックボックス) -->
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Platforms (JSON)</label>
-                    <input x-model="form.default_platforms" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["0","1"]'>
-                    <p class="text-[10px] text-gray-600 mt-0.5">0=iOS, 1=Android, 4=Desktop</p>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Platforms</label>
+                    <div class="flex flex-wrap gap-1.5">
+                        <template x-for="opt in platformOptions" :key="opt.value">
+                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                   :class="isChecked('default_platforms', opt.value) ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                <input type="checkbox" class="hidden"
+                                       :checked="isChecked('default_platforms', opt.value)"
+                                       @change="toggleJson('default_platforms', opt.value)">
+                                <span x-text="opt.label"></span>
+                            </label>
+                        </template>
+                    </div>
                 </div>
+
+                <!-- Languages (チェックボックス) -->
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Languages (JSON)</label>
-                    <input x-model="form.default_languages" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["ja"]'>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Languages</label>
+                    <div class="flex flex-wrap gap-1.5">
+                        <template x-for="opt in languageOptions" :key="opt.value">
+                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                   :class="isChecked('default_languages', opt.value) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                <input type="checkbox" class="hidden"
+                                       :checked="isChecked('default_languages', opt.value)"
+                                       @change="toggleJson('default_languages', opt.value)">
+                                <span x-text="opt.label"></span>
+                            </label>
+                        </template>
+                    </div>
                 </div>
+
+                <!-- Age Ranges (下限〜上限ドロップダウン) -->
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Age Ranges (JSON)</label>
-                    <input x-model="form.default_age_ranges" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["AGE_20_TO_24","AGE_25_TO_34"]'>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Age Ranges</label>
+                    <div class="flex items-center gap-2">
+                        <select x-model="ageMin" @change="onAgeMinChange()" class="input-field px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                            <option value="">--</option>
+                            <option value="13">13</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="40">40</option>
+                        </select>
+                        <span class="text-gray-500 text-xs">〜</span>
+                        <select x-model="ageMax" @change="updateAgeRange()" class="input-field px-3 py-2 rounded-xl text-sm text-white bg-transparent">
+                            <option value="">--</option>
+                            <template x-for="opt in ageMaxOptions" :key="opt.value">
+                                <option :value="opt.value" x-text="opt.label"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <p class="text-[10px] text-gray-600 mt-1" x-show="ageMin && ageMax" x-text="'→ ' + (form.default_age_ranges || '')"></p>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Locations (JSON)</label>
-                    <input x-model="form.default_locations" type="text" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder='["96b1de42aa60e098"]'>
+
+                <!-- Locations (日本 + 47都道府県チェックボックス) -->
+                <div class="md:col-span-2 lg:col-span-3">
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-2">Locations</label>
+                    <!-- 日本全国 -->
+                    <div class="mb-2">
+                        <label class="inline-flex items-center px-3 py-1.5 rounded-lg text-[12px] font-medium cursor-pointer transition-all select-none"
+                               :class="isChecked('default_locations', '06ef846bfc783874') ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                            <input type="checkbox" class="hidden"
+                                   :checked="isChecked('default_locations', '06ef846bfc783874')"
+                                   @change="toggleJson('default_locations', '06ef846bfc783874')">
+                            <span>日本（全国）</span>
+                        </label>
+                    </div>
+                    <!-- 都道府県 -->
+                    <div class="flex flex-wrap gap-1.5">
+                        <template x-for="opt in locationOptions" :key="opt.value">
+                            <label class="inline-flex items-center px-2.5 py-1.5 rounded-lg text-[11px] cursor-pointer transition-all select-none"
+                                   :class="isChecked('default_locations', opt.value) ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-white/[0.03] text-gray-500 border border-white/[0.06] hover:border-white/10'">
+                                <input type="checkbox" class="hidden"
+                                       :checked="isChecked('default_locations', opt.value)"
+                                       @change="toggleJson('default_locations', opt.value)">
+                                <span x-text="opt.label"></span>
+                            </label>
+                        </template>
+                    </div>
                 </div>
+
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Audience Expansion</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">オーディエンス拡張</label>
                     <select x-model="form.default_audience_expansion" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
-                        <option value="">None</option>
-                        <option value="EXPANDED">Expanded</option>
-                        <option value="NARROW">Narrow</option>
+                        <option value="">なし</option>
+                        <option value="EXPANDED">拡張</option>
+                        <option value="NARROW">限定</option>
                     </select>
                 </div>
             </div>
@@ -147,18 +224,18 @@
 
         <!-- Budget Defaults -->
         <div class="glass rounded-2xl p-5 mb-4">
-            <h2 class="text-sm font-semibold text-white mb-4">Default Budget</h2>
+            <h2 class="text-sm font-semibold text-white mb-4">デフォルト予算</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Daily Budget (JPY)</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">日予算（JPY）</label>
                     <input x-model.number="form.default_daily_budget" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="5000">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Default Bid (JPY)</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">デフォルト入札額（JPY）</label>
                     <input x-model.number="form.default_bid_amount" type="number" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white" placeholder="180">
                 </div>
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">Currency</label>
+                    <label class="block text-[11px] font-medium text-gray-500 uppercase tracking-wider mb-1">通貨</label>
                     <select x-model="form.currency" class="input-field w-full px-3 py-2 rounded-xl text-sm text-white bg-transparent">
                         <option value="JPY">JPY</option>
                         <option value="USD">USD</option>
@@ -170,11 +247,42 @@
         <!-- Save -->
         <div class="flex justify-end">
             <button type="submit" :disabled="saving" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[13px] font-medium rounded-xl transition-colors">
-                <span x-show="!saving">Save Changes</span>
-                <span x-show="saving">Saving...</span>
+                <span x-show="!saving">変更を保存</span>
+                <span x-show="saving">保存中...</span>
             </button>
         </div>
     </form>
+
+    <!-- LP Management (quick view + link to full page) -->
+    <div class="glass rounded-2xl p-5">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-sm font-semibold text-white">LP（ランディングページ）</h2>
+            <a href="/lp" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center">
+                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.854a4.5 4.5 0 00-6.364-6.364L4.5 8.25"/></svg>
+                LP管理ページへ
+            </a>
+        </div>
+
+        <!-- LP List (read-only summary) -->
+        <template x-if="landingPages.length === 0">
+            <p class="text-sm text-gray-600 text-center py-4">LPはまだ登録されていません。<a href="/lp" class="text-sky-400 hover:text-sky-300">LP管理ページ</a>から追加してください。</p>
+        </template>
+        <div class="space-y-2">
+            <template x-for="lp in landingPages" :key="lp.id">
+                <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all"
+                     :class="lp.is_used ? 'bg-amber-500/[0.03] border-amber-500/10' : 'bg-white/[0.02] border-white/[0.04]'">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-medium truncate" :class="lp.is_used ? 'text-gray-500 line-through' : 'text-white'" x-text="lp.name || '(名称なし)'"></span>
+                            <span x-show="lp.is_used" class="badge bg-amber-500/10 text-amber-400 border border-amber-500/20 flex-shrink-0">使用済み</span>
+                        </div>
+                        <p class="text-[11px] truncate mt-0.5" :class="lp.is_used ? 'text-gray-600' : 'text-gray-500'" x-text="lp.url"></p>
+                    </div>
+                    <button @click="navigator.clipboard.writeText(lp.url); toast('URLをコピーしました')" class="text-[10px] text-sky-400 hover:text-sky-300 transition-colors flex-shrink-0">コピー</button>
+                </div>
+            </template>
+        </div>
+    </div>
 </div>
 {% endblock %}
 {% block scripts %}
@@ -185,6 +293,122 @@ function projectDetail() {
         syncing: false,
         fundingInstruments: [],
         conversionTags: [],
+        landingPages: [],
+        init() {
+            this.initAgeRange();
+            this.loadLandingPages();
+        },
+
+        // マルチセレクト選択肢
+        placementOptions: [
+            { value: 'TIMELINES', label: 'タイムライン' },
+            { value: 'PROFILES', label: 'プロフィール' },
+            { value: 'SEARCH_RESULTS', label: '検索結果' },
+            { value: 'REPLIES', label: '返信' },
+            { value: 'MEDIA_VIEWER', label: 'メディアビューアー' },
+        ],
+        platformOptions: [
+            { value: '0', label: 'iOS' },
+            { value: '1', label: 'Android' },
+            { value: '4', label: 'Desktop' },
+        ],
+        languageOptions: [
+            { value: 'ja', label: '日本語' },
+            { value: 'en', label: 'English' },
+            { value: 'ko', label: '韓国語' },
+            { value: 'zh', label: '中文' },
+            { value: 'es', label: 'Español' },
+            { value: 'fr', label: 'Français' },
+            { value: 'de', label: 'Deutsch' },
+            { value: 'pt', label: 'Português' },
+            { value: 'th', label: 'ไทย' },
+            { value: 'vi', label: 'Tiếng Việt' },
+        ],
+        // 年齢範囲: 下限→上限オプション
+        _ageMaxByMin: {
+            '13': [
+                { value: '19', label: '19' },
+                { value: '29', label: '29' },
+                { value: '34', label: '34' },
+                { value: '39', label: '39' },
+            ],
+            '20': [
+                { value: '29', label: '29' },
+                { value: '34', label: '34' },
+                { value: '39', label: '39' },
+                { value: '49', label: '49' },
+                { value: 'above', label: '以上' },
+            ],
+            '30': [
+                { value: '39', label: '39' },
+                { value: '49', label: '49' },
+                { value: 'above', label: '以上' },
+            ],
+            '40': [
+                { value: '49', label: '49' },
+                { value: 'above', label: '以上' },
+            ],
+        },
+        // 下限+上限 → API値マッピング
+        _ageRangeMap: {
+            '13_19': 'AGE_13_TO_19', '13_29': 'AGE_13_TO_29', '13_34': 'AGE_13_TO_34', '13_39': 'AGE_13_TO_39',
+            '20_29': 'AGE_20_TO_29', '20_34': 'AGE_20_TO_34', '20_39': 'AGE_20_TO_39', '20_49': 'AGE_20_TO_49', '20_above': 'AGE_OVER_20',
+            '30_39': 'AGE_30_TO_39', '30_49': 'AGE_30_TO_49', '30_above': 'AGE_OVER_30',
+            '40_49': 'AGE_40_TO_49', '40_above': 'AGE_OVER_50',
+        },
+        ageMin: '',
+        ageMax: '',
+        ageMaxOptions: [],
+        locationOptions: [
+            { value: '0b89db31d164a17d', label: '北海道' },
+            { value: '1de05e90db6fde15', label: '青森県' },
+            { value: '516fad81ed9abcc2', label: '岩手県' },
+            { value: '1cff59592a4767e9', label: '宮城県' },
+            { value: '975c45ff265eb77c', label: '秋田県' },
+            { value: '4a9a5111024ffa58', label: '山形県' },
+            { value: '5e921369a11e38d5', label: '福島県' },
+            { value: 'cb7c6e9092251aa1', label: '茨城県' },
+            { value: '9452db4fb01f0432', label: '栃木県' },
+            { value: '00a8aa111d38316c', label: '群馬県' },
+            { value: '6eb3dcfadbbe0c68', label: '埼玉県' },
+            { value: '7562529145a9ed1f', label: '千葉県' },
+            { value: 'a56612250c754f23', label: '東京都' },
+            { value: '5f3279ed753778b7', label: '神奈川県' },
+            { value: '5af9c3e8dadd043d', label: '新潟県' },
+            { value: 'c005c6ef5d97c9da', label: '富山県' },
+            { value: '1d059cea3e433d3d', label: '石川県' },
+            { value: 'd3bdee61e7cfba0c', label: '福井県' },
+            { value: 'a20dcb31ad69d661', label: '山梨県' },
+            { value: 'f28ae4f6babdb2b5', label: '長野県' },
+            { value: 'a3e6429d33900d31', label: '岐阜県' },
+            { value: 'd80142cda25d6767', label: '静岡県' },
+            { value: 'c68b1ffd6bd34468', label: '愛知県' },
+            { value: 'f9170e3707e30162', label: '三重県' },
+            { value: '287821abb712dd3b', label: '滋賀県' },
+            { value: 'd4255b2b43cbf2cc', label: '京都府' },
+            { value: '84316acd652607fa', label: '大阪府' },
+            { value: '46cd5ede80186a9c', label: '兵庫県' },
+            { value: '6836153322ac8f20', label: '奈良県' },
+            { value: '631253d45931eb36', label: '和歌山県' },
+            { value: '4bb7c88397417f82', label: '鳥取県' },
+            { value: 'fd9c584b35c83605', label: '島根県' },
+            { value: 'b9f3fc68dd8f717b', label: '岡山県' },
+            { value: '39834ee320359393', label: '広島県' },
+            { value: 'ab43b3b8a7593bb0', label: '山口県' },
+            { value: '4efce255445dc26a', label: '徳島県' },
+            { value: '9411fa3e127a9e37', label: '香川県' },
+            { value: 'df55059f8045566b', label: '愛媛県' },
+            { value: '00af8e922b6236ea', label: '高知県' },
+            { value: '684cc1cfd89cacef', label: '福岡県' },
+            { value: '6b52871b45b5b261', label: '佐賀県' },
+            { value: '59856611bf9bfb97', label: '長崎県' },
+            { value: 'a160a0ba64b9b2b8', label: '熊本県' },
+            { value: '84166be9996a2df5', label: '大分県' },
+            { value: '82564af6cbb58e75', label: '宮崎県' },
+            { value: 'fc60aa4eb7499eb1', label: '鹿児島県' },
+            { value: '052e049119fd8da1', label: '沖縄県' },
+        ],
+
         form: {
             name: '{{ project.name }}',
             description: '{{ project.description or "" }}',
@@ -192,18 +416,42 @@ function projectDetail() {
             funding_instrument_id: '{{ project.funding_instrument_id or "" }}',
             conversion_tag_id: '{{ project.conversion_tag_id or "" }}',
             default_objective: '{{ project.default_objective }}',
-            default_placements: '{{ project.default_placements or "" }}',
-            default_platforms: '{{ project.default_platforms or "" }}',
+            default_placements: {{ project.default_placements|tojson }},
+            default_platforms: {{ project.default_platforms|tojson }},
             default_gender: '{{ project.default_gender or "" }}',
-            default_age_ranges: '{{ project.default_age_ranges or "" }}',
-            default_locations: '{{ project.default_locations or "" }}',
-            default_languages: '{{ project.default_languages or "" }}',
+            default_age_ranges: {{ project.default_age_ranges|tojson }},
+            default_locations: {{ project.default_locations|tojson }},
+            default_languages: {{ project.default_languages|tojson }},
             default_bid_strategy: '{{ project.default_bid_strategy }}',
             default_daily_budget: {{ project.default_daily_budget or 'null' }},
             default_bid_amount: {{ project.default_bid_amount or 'null' }},
             currency: '{{ project.currency }}',
             default_audience_expansion: '{{ project.default_audience_expansion or "" }}',
         },
+
+        // JSON配列フィールドのチェック状態を返す
+        isChecked(field, value) {
+            const raw = this.form[field];
+            if (!raw) return false;
+            try {
+                const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                return Array.isArray(arr) && arr.includes(value);
+            } catch { return false; }
+        },
+
+        // JSON配列フィールドの値をトグル
+        toggleJson(field, value) {
+            let arr = [];
+            try {
+                const raw = this.form[field];
+                arr = raw ? (typeof raw === 'string' ? JSON.parse(raw) : [...raw]) : [];
+            } catch { arr = []; }
+            const idx = arr.indexOf(value);
+            if (idx >= 0) arr.splice(idx, 1);
+            else arr.push(value);
+            this.form[field] = arr.length > 0 ? JSON.stringify(arr) : '';
+        },
+
         async saveProject() {
             this.saving = true;
             try {
@@ -211,20 +459,21 @@ function projectDetail() {
                 if (data.credential_id) data.credential_id = parseInt(data.credential_id);
                 else data.credential_id = null;
                 await api('/api/projects/{{ project.id }}', 'PUT', data);
-                toast('Saved');
+                toast('保存しました');
+                setTimeout(() => window.location.href = '/projects', 500);
             } catch (err) { toast(err.message, 'error'); }
             this.saving = false;
         },
         async deleteProject() {
-            if (!confirm('Delete this project?')) return;
+            if (!confirm('この案件を削除しますか？')) return;
             try {
                 await api('/api/projects/{{ project.id }}', 'DELETE');
-                toast('Deleted');
+                toast('削除しました');
                 setTimeout(() => location.href = '/projects', 500);
             } catch (err) { toast(err.message, 'error'); }
         },
         async syncFromApi() {
-            if (!this.form.credential_id) { toast('Select a credential first', 'error'); return; }
+            if (!this.form.credential_id) { toast('先にAPI認証情報を選択してください', 'error'); return; }
             this.syncing = true;
             try {
                 const [fiRes, tagRes] = await Promise.all([
@@ -233,14 +482,58 @@ function projectDetail() {
                 ]);
                 if (fiRes.ok) this.fundingInstruments = fiRes.data || [];
                 if (tagRes.ok) this.conversionTags = tagRes.data || [];
-                toast('Synced from API');
+                toast('APIから同期しました');
             } catch (err) { toast(err.message, 'error'); }
             this.syncing = false;
         },
         onCredentialChange() {
             this.fundingInstruments = [];
             this.conversionTags = [];
-        }
+        },
+
+        // 年齢範囲: 初期値からドロップダウンを復元
+        initAgeRange() {
+            const raw = this.form.default_age_ranges;
+            if (!raw) return;
+            try {
+                const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (!Array.isArray(arr) || arr.length === 0) return;
+                const val = arr[0]; // 単一値
+                // 逆引き
+                for (const [key, apiVal] of Object.entries(this._ageRangeMap)) {
+                    if (apiVal === val) {
+                        const [min, max] = key.split('_');
+                        this.ageMin = min;
+                        this.ageMaxOptions = this._ageMaxByMin[min] || [];
+                        this.ageMax = max;
+                        return;
+                    }
+                }
+            } catch {}
+        },
+
+        onAgeMinChange() {
+            this.ageMaxOptions = this._ageMaxByMin[this.ageMin] || [];
+            this.ageMax = '';
+            this.updateAgeRange();
+        },
+
+        updateAgeRange() {
+            if (!this.ageMin || !this.ageMax) {
+                this.form.default_age_ranges = '';
+                return;
+            }
+            const key = this.ageMin + '_' + this.ageMax;
+            const apiVal = this._ageRangeMap[key];
+            this.form.default_age_ranges = apiVal ? JSON.stringify([apiVal]) : '';
+        },
+
+        // LP管理（表示のみ — 編集はLP管理ページで）
+        async loadLandingPages() {
+            try {
+                this.landingPages = await api('/api/projects/{{ project.id }}/landing-pages');
+            } catch {}
+        },
     };
 }
 </script>

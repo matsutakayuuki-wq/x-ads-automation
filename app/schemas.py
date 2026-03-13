@@ -126,6 +126,10 @@ class CampaignInput(BaseModel):
 
     tweet_ids: Optional[str] = None  # JSON
     tweet_text: Optional[str] = None
+    media_asset_ids: Optional[str] = None  # JSON
+    website_card_title: Optional[str] = None
+    website_card_url: Optional[str] = None
+    website_card_cta: Optional[str] = None
 
 
 class SubmissionCreate(BaseModel):
@@ -175,3 +179,56 @@ class SubmissionBatchResponse(BaseModel):
 
 class SubmissionBatchDetailResponse(SubmissionBatchResponse):
     campaigns: List[SubmissionCampaignResponse] = []
+
+
+# =============================================================================
+# MediaAsset
+# =============================================================================
+
+class MediaAssetResponse(BaseModel):
+    id: int
+    filename: str
+    original_filename: str
+    mime_type: str
+    file_size: int
+    width: Optional[int]
+    height: Optional[int]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# =============================================================================
+# LandingPage
+# =============================================================================
+
+class LandingPageCreate(BaseModel):
+    name: Optional[str] = ""
+    url: str
+    description: Optional[str] = None
+
+
+class LandingPageBulkCreate(BaseModel):
+    """複数LPを一括登録（URLリスト）"""
+    urls: list[str]
+    names: Optional[list[str]] = None
+
+
+class LandingPageUpdate(BaseModel):
+    name: Optional[str] = None
+    url: Optional[str] = None
+    description: Optional[str] = None
+    is_used: Optional[bool] = None
+
+
+class LandingPageResponse(BaseModel):
+    id: int
+    project_id: int
+    name: Optional[str]
+    url: str
+    description: Optional[str]
+    is_used: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

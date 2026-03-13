@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}メディアライブラリ - X Ads Automation{% endblock %}
+{% block content %}
+<div x-data="mediaApp()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-white">メディアライブラリ</h1>
+            <p class="text-sm text-gray-500 mt-1">広告用画像・動画の管理</p>
+        </div>
+        <label class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-[13px] font-medium rounded-xl transition-colors flex items-center cursor-pointer">
+            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+            アップロード
+            <input type="file" multiple accept="image/*,video/*" @change="uploadFiles($event)" class="hidden">
+        </label>
+    </div>
+
+    <!-- Upload progress -->
+    <div x-show="uploading" x-cloak class="glass rounded-2xl p-4">
+        <div class="flex items-center space-x-3">
+            <svg class="animate-spin h-5 w-5 text-sky-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span class="text-sm text-gray-300">アップロード中... (<span x-text="uploadProgress"></span>/<span x-text="uploadTotal"></span>)</span>
+        </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="glass rounded-2xl p-8 border-2 border-dashed border-white/10 text-center"
+         @dragover.prevent="$el.classList.add('border-sky-500/40')"
+         @dragleave.prevent="$el.classList.remove('border-sky-500/40')"
+         @drop.prevent="$el.classList.remove('border-sky-500/40'); handleDrop($event)"
+         x-show="assets.length === 0 && !uploading" x-cloak>
+        <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"/></svg>
+        <p class="text-gray-500 text-sm">ファイルをドラッグ＆ドロップ、またはアップロードボタンから選択</p>
+        <p class="text-gray-600 text-xs mt-1">対応形式: JPEG, PNG, GIF, WebP, MP4, MOV, WebM</p>
+    </div>
+
+    <!-- Media Grid -->
+    <div x-show="assets.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <template x-for="a in assets" :key="a.id">
+            <div class="glass rounded-xl overflow-hidden group relative">
+                <!-- Thumbnail -->
+                <template x-if="a.mime_type.startsWith('image/')">
+                    <img :src="'/api/media/' + a.id + '/file'" :alt="a.original_filename"
+                         class="w-full aspect-square object-cover">
+                </template>
+                <template x-if="a.mime_type.startsWith('video/')">
+                    <div class="w-full aspect-square bg-gray-900 flex items-center justify-center relative">
+                        <video :src="'/api/media/' + a.id + '/file'" class="w-full h-full object-cover" muted></video>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-white/60" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
+                    </div>
+                </template>
+                <!-- Info overlay -->
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                    <p class="text-[10px] text-white truncate" x-text="a.original_filename"></p>
+                    <p class="text-[10px] text-gray-400" x-text="formatSize(a.file_size)"></p>
+                </div>
+                <!-- Delete button -->
+                <button @click.stop="deleteMedia(a.id)" class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-red-600/30">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </template>
+    </div>
+
+    <!-- Stats -->
+    <div x-show="assets.length > 0" class="text-center text-xs text-gray-600 pb-4">
+        <span x-text="assets.length"></span>件のメディア
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function mediaApp() {
+    return {
+        assets: {{ assets | tojson | safe }},
+        uploading: false,
+        uploadProgress: 0,
+        uploadTotal: 0,
+
+        formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        },
+
+        async uploadFiles(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            await this._upload(files);
+            event.target.value = '';
+        },
+
+        async handleDrop(event) {
+            const files = event.dataTransfer.files;
+            if (!files.length) return;
+            await this._upload(files);
+        },
+
+        async _upload(files) {
+            this.uploading = true;
+            this.uploadTotal = files.length;
+            this.uploadProgress = 0;
+
+            for (const file of files) {
+                try {
+                    const form = new FormData();
+                    form.append('file', file);
+                    const resp = await fetch('/api/media/upload', {
+                        method: 'POST',
+                        body: form,
+                    });
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        throw new Error(err.detail || 'アップロード失敗');
+                    }
+                    const asset = await resp.json();
+                    this.assets.unshift(asset);
+                } catch (e) {
+                    toast(file.name + ': ' + e.message, 'error');
+                }
+                this.uploadProgress++;
+            }
+
+            this.uploading = false;
+            if (this.uploadProgress === this.uploadTotal) {
+                toast(this.uploadTotal + '件のメディアをアップロードしました');
+            }
+        },
+
+        async deleteMedia(id) {
+            if (!confirm('このメディアを削除しますか？')) return;
+            try {
+                await api('/api/media/' + id, 'DELETE');
+                this.assets = this.assets.filter(a => a.id !== id);
+                toast('削除しました');
+            } catch (e) { toast(e.message, 'error'); }
+        },
+    };
+}
+</script>
+{% endblock %}

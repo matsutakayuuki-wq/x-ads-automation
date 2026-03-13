@@ -1,6 +1,10 @@
 """Excel 生成・ダウンロード"""
 from __future__ import annotations
 
+import logging
+import re
+import urllib.parse
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -9,7 +13,25 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import Project, SubmissionBatch, User
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=["excel"])
+
+
+def _safe_filename(name: str, batch_id: int) -> tuple[str, str]:
+    """バッチ名からHTTPヘッダー安全なファイル名を生成。
+
+    Returns:
+        (ascii_filename, utf8_encoded_filename)
+    """
+    # スラッシュ等のファイル名不正文字をアンダースコアに置換
+    safe = re.sub(r'[/\\:*?"<>|]', '_', name.replace(' ', '_'))
+    full_name = f"xads_{safe}_{batch_id}.xlsx"
+    # ASCII フォールバック (非ASCII を除去)
+    ascii_name = f"xads_batch_{batch_id}.xlsx"
+    # RFC 5987 UTF-8 エンコード
+    encoded = urllib.parse.quote(full_name)
+    return ascii_name, encoded
 
 
 @router.get("/api/submissions/{batch_id}/excel")
@@ -32,15 +54,24 @@ def download_excel(
 
     from app.services.excel_generator import ExcelGenerator
 
-    generator = ExcelGenerator()
-    output = generator.generate(batch, project)
+    try:
+        generator = ExcelGenerator()
+        output = generator.generate(batch, project)
+    except Exception as e:
+        logger.error("Excel generation failed for batch %d: %s", batch_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Excel生成に失敗しました: {e}")
 
-    filename = f"xads_{batch.name.replace(' ', '_')}_{batch.id}.xlsx"
+    ascii_name, encoded_name = _safe_filename(batch.name, batch.id)
 
     return StreamingResponse(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"{ascii_name}\"; "
+                f"filename*=UTF-8''{encoded_name}"
+            )
+        },
     )
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -17,6 +18,61 @@ from app.models import (
 from app.services.x_ads_client import XAdsClient, XAdsApiError, yen_to_micro
 
 logger = logging.getLogger(__name__)
+
+# Excel/UI のプレースメント名 → X Ads API のプレースメント名マッピング
+PLACEMENT_MAP = {
+    # Excel形式（日本語UI由来）
+    "TIMELINES": "TWITTER_TIMELINE",
+    "SEARCH_RESULTS": "TWITTER_SEARCH",
+    "PROFILES": "TWITTER_PROFILE",
+    "REPLIES": "TWITTER_REPLIES",
+    "MEDIA_VIEWER": "TWITTER_MEDIA_VIEWER",
+    # そのまま使えるAPI形式
+    "ALL_ON_TWITTER": "ALL_ON_TWITTER",
+    "PUBLISHER_NETWORK": "PUBLISHER_NETWORK",
+    "TAP_BANNER": "TAP_BANNER",
+    "TAP_FULL": "TAP_FULL",
+    "TAP_FULL_LANDSCAPE": "TAP_FULL_LANDSCAPE",
+    "TAP_MRECT": "TAP_MRECT",
+    "TAP_NATIVE": "TAP_NATIVE",
+    "TWITTER_MEDIA_VIEWER": "TWITTER_MEDIA_VIEWER",
+    "TWITTER_PROFILE": "TWITTER_PROFILE",
+    "TWITTER_REPLIES": "TWITTER_REPLIES",
+    "TWITTER_SEARCH": "TWITTER_SEARCH",
+    "TWITTER_TIMELINE": "TWITTER_TIMELINE",
+}
+
+JST = timezone(timedelta(hours=9))
+
+
+def _normalize_placements(raw: str) -> str:
+    """プレースメント文字列をAPI形式に変換。
+    入力: JSON配列 / セミコロン区切り / カンマ区切り
+    出力: カンマ区切りのAPI形式
+    """
+    # JSON配列を試す
+    try:
+        items = json.loads(raw)
+        if isinstance(items, list):
+            mapped = [PLACEMENT_MAP.get(p.strip(), p.strip()) for p in items]
+            return ",".join(mapped)
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # セミコロン区切り or カンマ区切り
+    if ";" in raw:
+        items = [p.strip() for p in raw.split(";") if p.strip()]
+    else:
+        items = [p.strip() for p in raw.split(",") if p.strip()]
+
+    mapped = [PLACEMENT_MAP.get(p, p) for p in items]
+    return ",".join(mapped)
+
+
+def _default_start_time() -> str:
+    """開始時刻のデフォルト（現在時刻 + 5分、ISO 8601形式）"""
+    dt = datetime.now(JST) + timedelta(minutes=5)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S+09:00")
 
 
 class SubmissionService:
@@ -69,6 +125,10 @@ class SubmissionService:
                 audience_expansion=cd.get("audience_expansion"),
                 tweet_ids=cd.get("tweet_ids"),
                 tweet_text=cd.get("tweet_text"),
+                media_asset_ids=cd.get("media_asset_ids"),
+                website_card_title=cd.get("website_card_title"),
+                website_card_url=cd.get("website_card_url"),
+                website_card_cta=cd.get("website_card_cta"),
             )
             self.db.add(campaign)
 
@@ -183,28 +243,47 @@ class SubmissionService:
 
         # --- Step 2: Line Item 作成 ---
         if not campaign.api_line_item_id:
+            # X Ads API v12 では WEBSITE_CONVERSIONS を objective に直接指定すると500エラー
+            # 代わりに objective=WEBSITE_CLICKS + goal=WEBSITE_CONVERSIONS を使う
+            api_objective = campaign.campaign_objective
+            api_goal = None
+            if campaign.campaign_objective == "WEBSITE_CONVERSIONS":
+                api_objective = "WEBSITE_CLICKS"
+                api_goal = "WEBSITE_CONVERSIONS"
+
             li_params: dict = {
                 "campaign_id": campaign.api_campaign_id,
                 "name": campaign.line_item_name or campaign.campaign_name,
                 "product_type": "PROMOTED_TWEETS",
-                "objective": campaign.campaign_objective,
+                "objective": api_objective,
                 "entity_status": "PAUSED",
                 "bid_strategy": campaign.bid_strategy,
             }
 
+            # goal の設定（WEBSITE_CONVERSIONS等）
+            if api_goal:
+                li_params["goal"] = api_goal
+
             if campaign.bid_amount and campaign.bid_strategy != "AUTO":
                 li_params["bid_amount_local_micro"] = yen_to_micro(campaign.bid_amount)
 
-            # Placements
-            if campaign.placements:
-                try:
-                    placements = json.loads(campaign.placements)
-                    li_params["placements"] = ",".join(placements)
-                except (json.JSONDecodeError, TypeError):
-                    li_params["placements"] = campaign.placements
+            # コンバージョンタグ（WEBSITE_CONVERSIONS の場合に必要）
+            if campaign.conversion_tag_id:
+                li_params["primary_web_event_tag"] = campaign.conversion_tag_id
 
+            # Placements（Excel形式 → API形式に変換）
+            if campaign.placements:
+                li_params["placements"] = _normalize_placements(campaign.placements)
+            else:
+                # デフォルト: ALL_ON_TWITTER
+                li_params["placements"] = "ALL_ON_TWITTER"
+
+            # start_time は必須。未指定なら「今すぐ」（+5分）
             if campaign.start_time:
                 li_params["start_time"] = campaign.start_time
+            else:
+                li_params["start_time"] = _default_start_time()
+
             if campaign.end_time:
                 li_params["end_time"] = campaign.end_time
 
@@ -312,10 +391,62 @@ class SubmissionService:
             campaign.api_targeting_ids = json.dumps(targeting_ids)
             self.db.flush()
 
-        # --- Step 4: ダークポスト作成（必要な場合） ---
+        # --- Step 4a: メディアアップロード（必要な場合） ---
+        uploaded_media_ids: list[str] = []
+        first_media_key: str | None = None
+        if campaign.media_asset_ids and not campaign.api_tweet_id:
+            try:
+                asset_ids = json.loads(campaign.media_asset_ids)
+            except (json.JSONDecodeError, TypeError):
+                asset_ids = []
+
+            if asset_ids:
+                from app.models import MediaAsset
+                from pathlib import Path
+                for asset_id in asset_ids:
+                    try:
+                        asset = self.db.query(MediaAsset).filter(
+                            MediaAsset.id == int(asset_id)
+                        ).first()
+                        if not asset:
+                            continue
+                        file_path = str(Path("data/media") / str(asset.user_id) / asset.filename)
+                        result = client.upload_media(file_path, asset.mime_type)
+                        uploaded_media_ids.append(result["media_id_string"])
+                        if not first_media_key and result.get("media_key"):
+                            first_media_key = result["media_key"]
+                        logger.info("Media uploaded: %s -> %s", asset.original_filename, result["media_id_string"])
+                    except Exception as e:
+                        logger.warning("Media upload failed for asset %s: %s", asset_id, e)
+
+        # --- Step 4b: Website Card作成（必要な場合） ---
+        card_uri: str | None = campaign.card_uri
+        if campaign.website_card_url and not card_uri and not campaign.api_tweet_id:
+            try:
+                card_result = client.create_website_card(
+                    account_id=account_id,
+                    name=campaign.campaign_name + " - Card",
+                    website_title=campaign.website_card_title or campaign.campaign_name,
+                    website_url=campaign.website_card_url,
+                    website_cta=campaign.website_card_cta or "LEARN_MORE",
+                    media_key=first_media_key,
+                )
+                card_uri = card_result.get("card_uri")
+                campaign.card_uri = card_uri
+                self.db.flush()
+                logger.info("Website card created: %s", card_uri)
+            except XAdsApiError as e:
+                logger.warning("Website card creation failed: %s", e)
+
+        # --- Step 4c: ダークポスト作成（必要な場合） ---
         if campaign.tweet_text and not campaign.api_tweet_id:
             try:
-                tweet_result = client.create_tweet(account_id, campaign.tweet_text)
+                tweet_result = client.create_tweet(
+                    account_id,
+                    campaign.tweet_text,
+                    media_ids=uploaded_media_ids if uploaded_media_ids else None,
+                    card_uri=card_uri,
+                )
                 campaign.api_tweet_id = tweet_result.get("id") or tweet_result.get("id_str")
                 self.db.flush()
                 logger.info("Dark post created: %s", campaign.api_tweet_id)

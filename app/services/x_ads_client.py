@@ -59,9 +59,16 @@ class XAdsClient:
             if method.upper() == "GET":
                 resp = self.session.get(url, params=params)
             elif method.upper() == "POST":
-                resp = self.session.post(url, params=params, json=json_body)
+                # X Ads API はPOSTパラメータをリクエストボディ（form-encoded）で送信
+                if json_body:
+                    resp = self.session.post(url, json=json_body)
+                else:
+                    resp = self.session.post(url, data=params)
             elif method.upper() == "PUT":
-                resp = self.session.put(url, params=params, json=json_body)
+                if json_body:
+                    resp = self.session.put(url, json=json_body)
+                else:
+                    resp = self.session.put(url, data=params)
             elif method.upper() == "DELETE":
                 resp = self.session.delete(url, params=params)
             else:
@@ -90,8 +97,14 @@ class XAdsClient:
             if resp.status_code >= 400:
                 errors = data.get("errors", [])
                 error_msgs = [e.get("message", str(e)) for e in errors]
+                detail = "; ".join(error_msgs) or resp.text[:500]
+                logger.error(
+                    "X Ads API %s %s -> %d: %s | request_params=%s",
+                    method, url, resp.status_code, detail,
+                    json.dumps(params, ensure_ascii=False)[:500] if params else "none",
+                )
                 raise XAdsApiError(
-                    f"API Error {resp.status_code}: {'; '.join(error_msgs) or resp.text[:200]}",
+                    f"API Error {resp.status_code}: {detail}",
                     status_code=resp.status_code,
                     errors=errors,
                 )
@@ -233,10 +246,19 @@ class XAdsClient:
     # Tweet Creation
     # =========================================================================
 
-    def create_tweet(self, account_id: str, text: str, as_user_id: str | None = None) -> dict:
+    def create_tweet(
+        self,
+        account_id: str,
+        text: str,
+        as_user_id: str | None = None,
+        media_ids: list[str] | None = None,
+        card_uri: str | None = None,
+    ) -> dict:
         """広告専用ツイート（ダークポスト）を作成
 
         nullcast=true でタイムラインに表示されないツイートを作成
+        media_ids: メディアIDリスト（カンマ区切りでAPIに送信）
+        card_uri: Website Card URI
         """
         params: dict[str, Any] = {
             "text": text,
@@ -244,7 +266,128 @@ class XAdsClient:
         }
         if as_user_id:
             params["as_user_id"] = as_user_id
+        if media_ids:
+            params["media_ids"] = ",".join(media_ids)
+        if card_uri:
+            params["card_uri"] = card_uri
         data = self._request("POST", f"/accounts/{account_id}/tweet", params=params)
+        return data.get("data", {})
+
+    # =========================================================================
+    # Media Upload（メディアアップロード）
+    # =========================================================================
+
+    UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json"
+
+    def upload_media(self, file_path: str, mime_type: str) -> dict:
+        """メディアファイルをX APIにアップロード（チャンクアップロード）
+
+        Returns: {"media_id_string": "...", "media_key": "..."}
+        """
+        import os
+        file_size = os.path.getsize(file_path)
+        media_category = "tweet_image"
+        if mime_type.startswith("video/"):
+            media_category = "tweet_video"
+        elif mime_type == "image/gif":
+            media_category = "tweet_gif"
+
+        # Step 1: INIT
+        init_params = {
+            "command": "INIT",
+            "total_bytes": str(file_size),
+            "media_type": mime_type,
+            "media_category": media_category,
+        }
+        logger.info("Media upload INIT: %s (%d bytes, %s)", file_path, file_size, mime_type)
+        resp = self.session.post(self.UPLOAD_URL, data=init_params)
+        if resp.status_code >= 400:
+            raise XAdsApiError(f"Media INIT failed: {resp.text[:500]}", resp.status_code)
+        init_data = resp.json()
+        media_id = init_data["media_id_string"]
+
+        # Step 2: APPEND (chunked)
+        CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
+        with open(file_path, "rb") as f:
+            segment = 0
+            while True:
+                chunk = f.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                resp = self.session.post(
+                    self.UPLOAD_URL,
+                    data={"command": "APPEND", "media_id": media_id, "segment_index": str(segment)},
+                    files={"media_data": chunk},
+                )
+                if resp.status_code >= 400:
+                    raise XAdsApiError(f"Media APPEND failed: {resp.text[:500]}", resp.status_code)
+                segment += 1
+
+        # Step 3: FINALIZE
+        resp = self.session.post(
+            self.UPLOAD_URL,
+            data={"command": "FINALIZE", "media_id": media_id},
+        )
+        if resp.status_code >= 400:
+            raise XAdsApiError(f"Media FINALIZE failed: {resp.text[:500]}", resp.status_code)
+        finalize_data = resp.json()
+
+        # Step 4: STATUS polling (for video/gif)
+        processing_info = finalize_data.get("processing_info")
+        while processing_info and processing_info.get("state") in ("pending", "in_progress"):
+            wait_secs = processing_info.get("check_after_secs", 5)
+            logger.info("Media processing... waiting %ds", wait_secs)
+            time.sleep(wait_secs)
+            resp = self.session.get(
+                self.UPLOAD_URL,
+                params={"command": "STATUS", "media_id": media_id},
+            )
+            if resp.status_code >= 400:
+                raise XAdsApiError(f"Media STATUS failed: {resp.text[:500]}", resp.status_code)
+            status_data = resp.json()
+            processing_info = status_data.get("processing_info")
+            if processing_info and processing_info.get("state") == "failed":
+                error = processing_info.get("error", {})
+                raise XAdsApiError(f"Media processing failed: {error.get('message', 'Unknown')}")
+
+        result = {
+            "media_id_string": media_id,
+        }
+        # media_key is available in the response
+        if "media_key" in finalize_data:
+            result["media_key"] = finalize_data["media_key"]
+        elif "media_key" in init_data:
+            result["media_key"] = init_data["media_key"]
+
+        logger.info("Media upload complete: media_id=%s", media_id)
+        return result
+
+    # =========================================================================
+    # Website Card
+    # =========================================================================
+
+    def create_website_card(
+        self,
+        account_id: str,
+        name: str,
+        website_title: str,
+        website_url: str,
+        website_cta: str = "LEARN_MORE",
+        media_key: str | None = None,
+    ) -> dict:
+        """Website Card（リンク付きカード広告）を作成
+
+        Returns: {"card_uri": "card://...", ...}
+        """
+        params: dict[str, str] = {
+            "name": name,
+            "website_title": website_title,
+            "website_url": website_url,
+            "website_cta": website_cta,
+        }
+        if media_key:
+            params["media_key"] = media_key
+        data = self._request("POST", f"/accounts/{account_id}/cards/website", params=params)
         return data.get("data", {})
 
     # =========================================================================

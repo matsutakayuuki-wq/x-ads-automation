@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ batch.name }} - X Ads Automation{% endblock %}
 {% block content %}
-<div x-data="{ retrying: false }" class="space-y-6">
+<div x-data="submissionDetail()" class="space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div class="flex items-center space-x-3">
@@ -12,49 +12,77 @@
                 <h1 class="text-xl font-semibold text-white">{{ batch.name }}</h1>
                 <div class="flex items-center space-x-3 mt-1">
                     {% if batch.status == 'completed' %}
-                        <span class="badge bg-emerald-500/10 text-emerald-400">Completed</span>
+                        <span class="badge bg-emerald-500/10 text-emerald-400">完了</span>
                     {% elif batch.status == 'submitting' %}
-                        <span class="badge bg-sky-500/10 text-sky-400">Submitting</span>
+                        <span class="badge bg-sky-500/10 text-sky-400">入稿中</span>
                     {% elif batch.status == 'partial_failure' %}
-                        <span class="badge bg-amber-500/10 text-amber-400">Partial Failure</span>
+                        <span class="badge bg-amber-500/10 text-amber-400">一部失敗</span>
                     {% elif batch.status == 'failed' %}
-                        <span class="badge bg-red-500/10 text-red-400">Failed</span>
+                        <span class="badge bg-red-500/10 text-red-400">失敗</span>
                     {% else %}
-                        <span class="badge bg-gray-500/10 text-gray-400">Draft</span>
+                        <span class="badge bg-gray-500/10 text-gray-400">下書き</span>
                     {% endif %}
-                    <span class="text-xs text-gray-500">{{ batch.succeeded_campaigns }}/{{ batch.total_campaigns }} campaigns succeeded</span>
+                    <span class="text-xs text-gray-500">{{ batch.succeeded_campaigns }}/{{ batch.total_campaigns }} キャンペーン成功</span>
                 </div>
             </div>
         </div>
         <div class="flex space-x-2">
             {% if batch.failed_campaigns > 0 %}
             <button @click="retryFailed()" :disabled="retrying" class="px-4 py-2 bg-amber-600/10 text-amber-400 hover:bg-amber-600/20 text-[13px] font-medium rounded-xl transition-colors">
-                <span x-show="!retrying">Retry Failed</span>
-                <span x-show="retrying">Retrying...</span>
+                <span x-show="!retrying">失敗分を再試行</span>
+                <span x-show="retrying">再試行中...</span>
             </button>
             {% endif %}
+            <button @click="uploadToAdsEditor()" :disabled="uploading" class="px-4 py-2 bg-purple-600/10 text-purple-400 hover:bg-purple-600/20 text-[13px] font-medium rounded-xl transition-colors disabled:opacity-40">
+                <span x-show="!uploading">広告エディタにアップロード</span>
+                <span x-show="uploading">アップロード中...</span>
+            </button>
             <a href="/api/submissions/{{ batch.id }}/excel" class="px-4 py-2 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 text-[13px] font-medium rounded-xl transition-colors">
-                Download Excel
+                Excelダウンロード
             </a>
         </div>
     </div>
 
+    <!-- Upload Status -->
+    <template x-if="uploadStatus">
+        <div class="px-4 py-3 rounded-xl text-sm"
+             :class="{
+                 'bg-emerald-500/5 border border-emerald-500/10 text-emerald-400': uploadStatus === 'uploaded',
+                 'bg-sky-500/5 border border-sky-500/10 text-sky-400': uploadStatus === 'uploading',
+                 'bg-red-500/5 border border-red-500/10 text-red-400': uploadStatus === 'upload_failed',
+                 'bg-amber-500/5 border border-amber-500/10 text-amber-400': uploadStatus === 'session_expired'
+             }">
+            <template x-if="uploadStatus === 'uploading'">
+                <span>広告エディタにアップロード中...</span>
+            </template>
+            <template x-if="uploadStatus === 'uploaded'">
+                <span>広告エディタへのアップロード完了！</span>
+            </template>
+            <template x-if="uploadStatus === 'upload_failed'">
+                <span>アップロード失敗: <span x-text="uploadError"></span></span>
+            </template>
+            <template x-if="uploadStatus === 'session_expired'">
+                <span>セッション期限切れ。<a href="/credentials" class="underline">API設定</a>から再ログインしてください。</span>
+            </template>
+        </div>
+    </template>
+
     <!-- Batch Info -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="stat-card rounded-xl p-4">
-            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Method</p>
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">方法</p>
             <p class="text-sm font-medium text-white mt-1">{{ batch.submission_method|upper }}</p>
         </div>
         <div class="stat-card rounded-xl p-4">
-            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Total</p>
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">合計</p>
             <p class="text-sm font-medium text-white mt-1">{{ batch.total_campaigns }}</p>
         </div>
         <div class="stat-card rounded-xl p-4">
-            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Succeeded</p>
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">成功</p>
             <p class="text-sm font-medium text-emerald-400 mt-1">{{ batch.succeeded_campaigns }}</p>
         </div>
         <div class="stat-card rounded-xl p-4">
-            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Failed</p>
+            <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider">失敗</p>
             <p class="text-sm font-medium {% if batch.failed_campaigns > 0 %}text-red-400{% else %}text-gray-500{% endif %} mt-1">{{ batch.failed_campaigns }}</p>
         </div>
     </div>
@@ -65,10 +93,10 @@
             <thead>
                 <tr class="border-b border-white/[0.04]">
                     <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">#</th>
-                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
-                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Objective</th>
-                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Budget</th>
-                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">キャンペーン</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">目的</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">予算</th>
+                    <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">ステータス</th>
                     <th class="text-left px-5 py-3 text-[11px] font-medium text-gray-500 uppercase tracking-wider">API ID</th>
                 </tr>
             </thead>
@@ -88,13 +116,13 @@
                     </td>
                     <td class="px-5 py-3">
                         {% if c.status == 'success' %}
-                            <span class="badge bg-emerald-500/10 text-emerald-400">Success</span>
+                            <span class="badge bg-emerald-500/10 text-emerald-400">成功</span>
                         {% elif c.status == 'failed' %}
-                            <span class="badge bg-red-500/10 text-red-400">Failed</span>
+                            <span class="badge bg-red-500/10 text-red-400">失敗</span>
                         {% elif c.status == 'submitting' %}
-                            <span class="badge bg-sky-500/10 text-sky-400">Submitting</span>
+                            <span class="badge bg-sky-500/10 text-sky-400">入稿中</span>
                         {% else %}
-                            <span class="badge bg-gray-500/10 text-gray-400">Pending</span>
+                            <span class="badge bg-gray-500/10 text-gray-400">待機中</span>
                         {% endif %}
                     </td>
                     <td class="px-5 py-3 text-[11px] text-gray-500 font-mono">
@@ -121,13 +149,67 @@
 {% endblock %}
 {% block scripts %}
 <script>
-async function retryFailed() {
-    if (!confirm('Retry failed campaigns?')) return;
-    try {
-        const res = await api('/api/submissions/{{ batch.id }}/retry', 'POST');
-        toast(`Retry complete: ${res.succeeded_campaigns} succeeded`);
-        setTimeout(() => location.reload(), 1000);
-    } catch (err) { toast(err.message, 'error'); }
+function submissionDetail() {
+    return {
+        retrying: false,
+        uploading: false,
+        uploadStatus: {{ batch.upload_status|tojson }},
+        uploadError: {{ batch.upload_error|tojson }},
+        _pollInterval: null,
+        init() {
+            if (this.uploadStatus === 'uploading') {
+                this.uploading = true;
+                this.pollUploadStatus();
+            }
+        },
+        async retryFailed() {
+            if (!confirm('失敗したキャンペーンを再試行しますか？')) return;
+            this.retrying = true;
+            try {
+                const res = await api('/api/submissions/{{ batch.id }}/retry', 'POST');
+                toast(`再試行完了: ${res.succeeded_campaigns}件成功`);
+                setTimeout(() => location.reload(), 1000);
+            } catch (err) { toast(err.message, 'error'); }
+            this.retrying = false;
+        },
+        async uploadToAdsEditor() {
+            if (!confirm('このExcelを広告エディタにアップロードしますか？')) return;
+            this.uploading = true;
+            this.uploadStatus = 'uploading';
+            try {
+                await api('/api/browser/upload/{{ batch.id }}', 'POST');
+                toast('アップロードを開始しました...');
+                this.pollUploadStatus();
+            } catch (err) {
+                if (err.message && err.message.includes('session')) {
+                    toast('ブラウザセッションが必要です。API設定からログインしてください。', 'error');
+                } else {
+                    toast(err.message, 'error');
+                }
+                this.uploading = false;
+                this.uploadStatus = null;
+            }
+        },
+        pollUploadStatus() {
+            if (this._pollInterval) clearInterval(this._pollInterval);
+            this._pollInterval = setInterval(async () => {
+                try {
+                    const res = await api(`/api/browser/upload/{{ batch.id }}/status`);
+                    this.uploadStatus = res.upload_status;
+                    this.uploadError = res.upload_error;
+                    if (res.upload_status === 'uploaded') {
+                        clearInterval(this._pollInterval);
+                        toast('アップロード完了！');
+                        this.uploading = false;
+                    } else if (res.upload_status === 'upload_failed' || res.upload_status === 'session_expired') {
+                        clearInterval(this._pollInterval);
+                        toast(res.upload_error || 'アップロード失敗', 'error');
+                        this.uploading = false;
+                    }
+                } catch (err) { /* keep polling */ }
+            }, 3000);
+        }
+    };
 }
 </script>
 {% endblock %}

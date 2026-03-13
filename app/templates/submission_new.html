@@ -1,29 +1,29 @@
 {% extends "base.html" %}
-{% block title %}New Submission - X Ads Automation{% endblock %}
+{% block title %}新規入稿 - X Ads Automation{% endblock %}
 {% block content %}
 <div x-data="submissionApp()" class="space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-xl font-semibold text-white">New Submission</h1>
-            <p class="text-sm text-gray-500 mt-1">Create and submit ad campaigns</p>
+            <h1 class="text-xl font-semibold text-white">新規入稿</h1>
+            <p class="text-sm text-gray-500 mt-1">広告キャンペーンの作成・入稿</p>
         </div>
     </div>
 
     <!-- Step 1: Project Selection -->
     <div class="glass rounded-2xl p-5">
-        <h2 class="text-sm font-semibold text-white mb-3">1. Select Project</h2>
+        <h2 class="text-sm font-semibold text-white mb-3">1. 案件を選択</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <select x-model="projectId" @change="loadProjectDefaults()" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white bg-transparent">
-                    <option value="">-- Select Project --</option>
+                    <option value="">-- 案件を選択 --</option>
                     {% for p in projects %}
                     <option value="{{ p.id }}">{{ p.name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <input x-model="batchName" type="text" placeholder="Batch name (e.g. March LP Campaign)" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-600">
+                <input x-model="batchName" type="text" placeholder="バッチ名（例: 3月LPキャンペーン）" class="input-field w-full px-3 py-2.5 rounded-xl text-sm text-white placeholder-gray-600">
             </div>
         </div>
     </div>
@@ -31,11 +31,11 @@
     <!-- Step 2: Campaigns -->
     <div x-show="projectId" x-cloak>
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-sm font-semibold text-white">2. Campaign Details</h2>
+            <h2 class="text-sm font-semibold text-white">2. キャンペーン詳細</h2>
             <div class="flex space-x-2">
                 <button @click="addCampaign()" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center">
                     <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                    Add Campaign
+                    キャンペーン追加
                 </button>
             </div>
         </div>
@@ -44,26 +44,26 @@
             <div class="glass rounded-2xl p-5 mb-4">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                        Campaign #<span x-text="idx + 1"></span>
+                        キャンペーン #<span x-text="idx + 1"></span>
                     </h3>
                     <div class="flex space-x-2">
-                        <button @click="duplicateCampaign(idx)" class="text-[10px] text-gray-500 hover:text-sky-400 transition-colors">Duplicate</button>
-                        <button x-show="campaigns.length > 1" @click="removeCampaign(idx)" class="text-[10px] text-gray-500 hover:text-red-400 transition-colors">Remove</button>
+                        <button @click="duplicateCampaign(idx)" class="text-[10px] text-gray-500 hover:text-sky-400 transition-colors">複製</button>
+                        <button x-show="campaigns.length > 1" @click="removeCampaign(idx)" class="text-[10px] text-gray-500 hover:text-red-400 transition-colors">削除</button>
                     </div>
                 </div>
 
                 <!-- Campaign Settings -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
                     <div>
-                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Campaign Name *</label>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">キャンペーン名 *</label>
                         <input x-model="c.campaign_name" type="text" required placeholder="LP001" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Daily Budget (JPY)</label>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">日予算（JPY）</label>
                         <input x-model.number="c.campaign_daily_budget" type="number" placeholder="5000" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Bid Amount (JPY)</label>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">入札額（JPY）</label>
                         <input x-model.number="c.bid_amount" type="number" placeholder="180" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                     </div>
                 </div>
@@ -71,11 +71,11 @@
                 <!-- Ad Group Settings -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
                     <div>
-                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Ad Group Name</label>
-                        <input x-model="c.line_item_name" type="text" placeholder="Same as campaign" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">広告グループ名</label>
+                        <input x-model="c.line_item_name" type="text" placeholder="キャンペーン名と同じ" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Objective</label>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">目的</label>
                         <select x-model="c.campaign_objective" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
                             <option value="WEBSITE_CLICKS">Website Clicks</option>
                             <option value="WEBSITE_CONVERSIONS">Website Conversions</option>
@@ -86,100 +86,337 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Bid Strategy</label>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">入札戦略</label>
                         <select x-model="c.bid_strategy" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
-                            <option value="AUTO">Auto Bid</option>
-                            <option value="TARGET">Target Cost</option>
-                            <option value="MAX">Max Bid</option>
+                            <option value="AUTO">自動入札</option>
+                            <option value="TARGET">目標コスト</option>
+                            <option value="MAX">上限入札</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Schedule -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">開始日時</label>
+                        <input x-model="c.start_time" type="datetime-local" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white">
+                        <p class="text-[10px] text-gray-600 mt-0.5">空欄 = 即時開始</p>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">終了日時</label>
+                        <input x-model="c.end_time" type="datetime-local" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white">
+                        <p class="text-[10px] text-gray-600 mt-0.5">空欄 = 終了日なし</p>
                     </div>
                 </div>
 
                 <!-- Targeting (collapsible) -->
                 <details class="mb-4">
-                    <summary class="text-[10px] font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-300 transition-colors">Targeting (click to expand)</summary>
+                    <summary class="text-[10px] font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-300 transition-colors">ターゲティング（クリックで展開）</summary>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                         <div>
-                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Gender</label>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">性別</label>
                             <select x-model="c.target_gender" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
-                                <option value="">Any</option>
+                                <option value="">指定なし</option>
                                 <option value="MALE">Male</option>
                                 <option value="FEMALE">Female</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Age Ranges (JSON)</label>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">年齢範囲（JSON）</label>
                             <input x-model="c.target_age_ranges" type="text" placeholder='["AGE_20_TO_24"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Platforms (JSON)</label>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">プラットフォーム（JSON）</label>
                             <input x-model="c.target_platforms" type="text" placeholder='["0","1"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                         </div>
-                        <div>
-                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Placements (JSON)</label>
-                            <input x-model="c.placements" type="text" placeholder='["TIMELINES","SEARCH_RESULTS"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                        <div class="md:col-span-2 lg:col-span-3">
+                            <label class="block text-[10px] font-medium text-gray-500 mb-2">配信面</label>
+                            <div class="flex flex-wrap gap-3">
+                                <label class="inline-flex items-center space-x-1.5 text-xs text-gray-300 cursor-pointer">
+                                    <input type="checkbox" value="ALL_ON_TWITTER" :checked="getPlacementChecked(c, 'ALL_ON_TWITTER')" @change="togglePlacement(c, 'ALL_ON_TWITTER', $event)" class="rounded text-sky-500">
+                                    <span>X全体</span>
+                                </label>
+                                <label class="inline-flex items-center space-x-1.5 text-xs text-gray-300 cursor-pointer">
+                                    <input type="checkbox" value="TWITTER_TIMELINE" :checked="getPlacementChecked(c, 'TWITTER_TIMELINE')" @change="togglePlacement(c, 'TWITTER_TIMELINE', $event)" class="rounded text-sky-500">
+                                    <span>タイムライン</span>
+                                </label>
+                                <label class="inline-flex items-center space-x-1.5 text-xs text-gray-300 cursor-pointer">
+                                    <input type="checkbox" value="TWITTER_SEARCH" :checked="getPlacementChecked(c, 'TWITTER_SEARCH')" @change="togglePlacement(c, 'TWITTER_SEARCH', $event)" class="rounded text-sky-500">
+                                    <span>検索</span>
+                                </label>
+                                <label class="inline-flex items-center space-x-1.5 text-xs text-gray-300 cursor-pointer">
+                                    <input type="checkbox" value="TWITTER_PROFILE" :checked="getPlacementChecked(c, 'TWITTER_PROFILE')" @change="togglePlacement(c, 'TWITTER_PROFILE', $event)" class="rounded text-sky-500">
+                                    <span>プロフィール</span>
+                                </label>
+                                <label class="inline-flex items-center space-x-1.5 text-xs text-gray-300 cursor-pointer">
+                                    <input type="checkbox" value="TWITTER_REPLIES" :checked="getPlacementChecked(c, 'TWITTER_REPLIES')" @change="togglePlacement(c, 'TWITTER_REPLIES', $event)" class="rounded text-sky-500">
+                                    <span>返信</span>
+                                </label>
+                                <label class="inline-flex items-center space-x-1.5 text-xs text-gray-300 cursor-pointer">
+                                    <input type="checkbox" value="PUBLISHER_NETWORK" :checked="getPlacementChecked(c, 'PUBLISHER_NETWORK')" @change="togglePlacement(c, 'PUBLISHER_NETWORK', $event)" class="rounded text-sky-500">
+                                    <span>パブリッシャーネットワーク</span>
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-gray-600 mt-1">空欄 = X全体配信</p>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Locations (JSON)</label>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">地域（JSON）</label>
                             <input x-model="c.target_locations" type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Languages (JSON)</label>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">言語（JSON）</label>
                             <input x-model="c.target_languages" type="text" placeholder='["ja"]' class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-medium text-gray-500 mb-1">Audience Expansion</label>
+                            <label class="block text-[10px] font-medium text-gray-500 mb-1">オーディエンス拡張</label>
                             <select x-model="c.audience_expansion" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
-                                <option value="">None</option>
-                                <option value="EXPANDED">Expanded</option>
+                                <option value="">なし</option>
+                                <option value="EXPANDED">拡張</option>
                             </select>
                         </div>
                     </div>
                 </details>
 
-                <!-- Tweet IDs -->
-                <div>
-                    <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">Tweet IDs * (comma separated or JSON array)</label>
-                    <input x-model="c.tweet_ids" type="text" required placeholder="1234567890, 9876543210" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                <!-- Tweet / Post Section -->
+                <div class="border-t border-white/[0.06] pt-4">
+                    <!-- Mode tabs -->
+                    <div class="flex items-center space-x-1 mb-3">
+                        <button @click="c._postMode = 'compose'" class="px-3 py-1.5 text-[11px] font-medium rounded-lg transition-colors"
+                                :class="(c._postMode || 'compose') === 'compose' ? 'bg-sky-600/20 text-sky-400' : 'text-gray-500 hover:text-gray-300'">
+                            新規ポスト作成
+                        </button>
+                        <button @click="c._postMode = 'existing'" class="px-3 py-1.5 text-[11px] font-medium rounded-lg transition-colors"
+                                :class="c._postMode === 'existing' ? 'bg-sky-600/20 text-sky-400' : 'text-gray-500 hover:text-gray-300'">
+                            既存ツイートID
+                        </button>
+                        <div class="flex-1"></div>
+                        <button @click="showLpSidebar = true" x-show="landingPages.length > 0" class="px-3 py-1.5 text-[11px] font-medium text-emerald-400 hover:bg-emerald-600/10 rounded-lg transition-colors flex items-center">
+                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.854a4.5 4.5 0 00-6.364-6.364L4.5 8.25"/></svg>
+                            LP一覧
+                            <span x-show="availableLps.length > 0" class="ml-1 px-1.5 py-0.5 text-[9px] bg-emerald-500/20 text-emerald-400 rounded-full" x-text="availableLps.length"></span>
+                        </button>
+                    </div>
+
+                    <!-- Compose mode -->
+                    <div x-show="(c._postMode || 'compose') === 'compose'">
+                        <!-- Tweet text -->
+                        <div class="mb-3">
+                            <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">投稿文</label>
+                            <div class="relative">
+                                <textarea x-model="c.tweet_text" rows="3" placeholder="広告ポストのテキストを入力..." class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600 resize-none"></textarea>
+                                <span class="absolute bottom-2 right-2 text-[10px]"
+                                      :class="(c.tweet_text || '').length > 280 ? 'text-red-400' : 'text-gray-600'"
+                                      x-text="(c.tweet_text || '').length + '/280'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Media selector -->
+                        <div class="mb-3">
+                            <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">メディア</label>
+                            <!-- Selected media preview -->
+                            <div x-show="c._selectedMedia && c._selectedMedia.length > 0" class="flex flex-wrap gap-2 mb-2">
+                                <template x-for="(m, mi) in (c._selectedMedia || [])" :key="m.id">
+                                    <div class="relative w-20 h-20 rounded-lg overflow-hidden group">
+                                        <img x-show="m.mime_type.startsWith('image/')" :src="'/api/media/' + m.id + '/file'" class="w-full h-full object-cover">
+                                        <div x-show="m.mime_type.startsWith('video/')" class="w-full h-full bg-gray-800 flex items-center justify-center">
+                                            <svg class="w-6 h-6 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                        </div>
+                                        <button @click="c._selectedMedia.splice(mi, 1)" class="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 text-red-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                            <button @click="c._showMediaPicker = !c._showMediaPicker" class="px-3 py-1.5 text-[11px] text-gray-400 hover:text-white border border-dashed border-white/10 hover:border-white/20 rounded-lg transition-colors flex items-center">
+                                <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"/></svg>
+                                メディアを選択
+                            </button>
+                            <p class="text-[10px] text-gray-600 mt-1">最大4枚の画像、または1本の動画</p>
+
+                            <!-- Media picker -->
+                            <div x-show="c._showMediaPicker" x-cloak class="mt-2 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                                <div x-show="mediaAssets.length === 0" class="text-center py-4">
+                                    <p class="text-xs text-gray-500">メディアがありません</p>
+                                    <a href="/media" class="text-xs text-sky-400 hover:text-sky-300 mt-1 inline-block">メディアをアップロード</a>
+                                </div>
+                                <div class="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+                                    <template x-for="asset in mediaAssets" :key="asset.id">
+                                        <div @click="toggleMedia(c, asset)" class="relative aspect-square rounded-lg overflow-hidden cursor-pointer ring-2 transition-all"
+                                             :class="isMediaSelected(c, asset.id) ? 'ring-sky-500' : 'ring-transparent hover:ring-white/20'">
+                                            <img x-show="asset.mime_type.startsWith('image/')" :src="'/api/media/' + asset.id + '/file'" class="w-full h-full object-cover">
+                                            <div x-show="asset.mime_type.startsWith('video/')" class="w-full h-full bg-gray-800 flex items-center justify-center">
+                                                <svg class="w-4 h-4 text-white/50" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                            </div>
+                                            <div x-show="isMediaSelected(c, asset.id)" class="absolute inset-0 bg-sky-500/20 flex items-center justify-center">
+                                                <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Website Card toggle -->
+                        <div class="mb-3">
+                            <label class="inline-flex items-center space-x-2 cursor-pointer">
+                                <input type="checkbox" x-model="c._useCard" class="rounded text-sky-500">
+                                <span class="text-[11px] text-gray-400">Website Card（リンク付きカード広告）を使用</span>
+                            </label>
+                        </div>
+                        <div x-show="c._useCard" x-cloak class="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                            <div>
+                                <label class="block text-[10px] font-medium text-gray-500 mb-1">カードタイトル</label>
+                                <input x-model="c.website_card_title" type="text" placeholder="タイトル" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-medium text-gray-500 mb-1">LP URL</label>
+                                <input x-model="c.website_card_url" type="url" placeholder="https://..." class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-medium text-gray-500 mb-1">CTA</label>
+                                <select x-model="c.website_card_cta" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white bg-transparent">
+                                    <option value="LEARN_MORE">詳しく見る</option>
+                                    <option value="SHOP_NOW">今すぐ購入</option>
+                                    <option value="SIGN_UP">登録する</option>
+                                    <option value="BOOK_NOW">今すぐ予約</option>
+                                    <option value="APPLY_NOW">今すぐ応募</option>
+                                    <option value="CONTACT_US">お問い合わせ</option>
+                                    <option value="DOWNLOAD">ダウンロード</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Existing tweet ID mode -->
+                    <div x-show="c._postMode === 'existing'" x-cloak>
+                        <label class="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-1">ツイートID（カンマ区切りまたはJSON配列）</label>
+                        <input x-model="c.tweet_ids" type="text" placeholder="1234567890, 9876543210" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                    </div>
                 </div>
             </div>
         </template>
     </div>
 
+    <!-- LP Sidebar -->
+    <div x-show="showLpSidebar" x-cloak class="fixed inset-0 z-50 flex justify-end" @click.self="showLpSidebar = false">
+        <div class="w-80 h-full bg-[#111114] border-l border-white/[0.06] p-5 overflow-y-auto" @click.stop>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-white">LP一覧</h3>
+                <button @click="showLpSidebar = false" class="text-gray-500 hover:text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <template x-if="landingPages.length === 0">
+                <p class="text-xs text-gray-600 text-center py-8">LPが登録されていません。<a href="/lp" class="text-sky-400 hover:text-sky-300">LP管理ページ</a>から追加してください。</p>
+            </template>
+
+            <!-- Available LPs -->
+            <template x-if="availableLps.length > 0">
+                <div class="mb-4">
+                    <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">使用可能</p>
+                    <div class="space-y-2">
+                        <template x-for="lp in availableLps" :key="lp.id">
+                            <div class="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-sm text-white font-medium truncate" x-text="lp.name || '(名称なし)'"></p>
+                                    <label class="flex items-center cursor-pointer flex-shrink-0 ml-2" title="使用済みにする">
+                                        <input type="checkbox" :checked="lp.is_used" @change="toggleLpUsed(lp)" class="rounded text-amber-500 bg-transparent border-gray-600">
+                                        <span class="text-[9px] text-gray-500 ml-1">済</span>
+                                    </label>
+                                </div>
+                                <p class="text-[11px] text-gray-500 truncate mt-0.5" x-text="lp.url"></p>
+                                <template x-if="lp.description">
+                                    <p class="text-[10px] text-gray-600 mt-0.5" x-text="lp.description"></p>
+                                </template>
+                                <div class="flex space-x-2 mt-2">
+                                    <button @click="navigator.clipboard.writeText(lp.url); toast('URLをコピーしました')" class="px-2 py-1 text-[10px] text-sky-400 hover:bg-sky-500/10 rounded transition-colors">URLコピー</button>
+                                    <button @click="setCardUrl(lp)" class="px-2 py-1 text-[10px] text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors">カードに設定</button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Used LPs -->
+            <template x-if="usedLps.length > 0">
+                <div>
+                    <p class="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">使用済み（<span x-text="usedLps.length"></span>件）</p>
+                    <div class="space-y-2">
+                        <template x-for="lp in usedLps" :key="lp.id">
+                            <div class="p-3 rounded-xl bg-amber-500/[0.03] border border-amber-500/10 opacity-60">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-sm text-gray-500 font-medium truncate line-through" x-text="lp.name || '(名称なし)'"></p>
+                                    <label class="flex items-center cursor-pointer flex-shrink-0 ml-2" title="使用可能に戻す">
+                                        <input type="checkbox" :checked="lp.is_used" @change="toggleLpUsed(lp)" class="rounded text-amber-500 bg-transparent border-gray-600">
+                                        <span class="text-[9px] text-amber-400 ml-1">済</span>
+                                    </label>
+                                </div>
+                                <p class="text-[11px] text-gray-600 truncate mt-0.5" x-text="lp.url"></p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
     <!-- Step 3: Submit -->
     <div x-show="projectId && campaigns.length > 0" x-cloak class="glass rounded-2xl p-5">
-        <h2 class="text-sm font-semibold text-white mb-4">3. Submit</h2>
+        <h2 class="text-sm font-semibold text-white mb-4">3. 入稿</h2>
 
         <!-- Summary -->
         <div class="mb-4 px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
             <p class="text-xs text-gray-400">
-                <span x-text="campaigns.length"></span> campaign(s) will be created as <strong class="text-white">PAUSED</strong>.
-                You can activate them in X Ads Manager after review.
+                <span x-text="campaigns.length"></span>件のキャンペーンが<strong class="text-white">一時停止</strong>状態で作成されます。確認後、X広告マネージャーで有効化できます。
             </p>
         </div>
 
         <div class="flex items-center space-x-3">
             <button @click="submitViaApi()" :disabled="submitting" class="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[13px] font-medium rounded-xl transition-colors flex items-center">
-                <span x-show="!submitting">Submit via API</span>
+                <span x-show="!submitting">APIで入稿</span>
                 <span x-show="submitting" class="flex items-center">
                     <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Submitting...
+                    入稿中...
                 </span>
             </button>
             <button @click="downloadExcel()" :disabled="submitting" class="px-5 py-2.5 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 text-[13px] font-medium rounded-xl transition-colors">
-                Download Excel
+                Excelダウンロード
+            </button>
+            <button @click="uploadToAdsEditor()" :disabled="submitting || uploading" class="px-5 py-2.5 bg-purple-600/10 text-purple-400 hover:bg-purple-600/20 text-[13px] font-medium rounded-xl transition-colors disabled:opacity-40">
+                <span x-show="!uploading">広告エディタにアップロード</span>
+                <span x-show="uploading" class="flex items-center">
+                    <svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    アップロード中...
+                </span>
             </button>
         </div>
+
+        <!-- Upload Status -->
+        <template x-if="uploadStatus">
+            <div class="mt-3 px-4 py-3 rounded-xl text-sm"
+                 :class="{
+                     'bg-emerald-500/5 border border-emerald-500/10 text-emerald-400': uploadStatus === 'uploaded',
+                     'bg-sky-500/5 border border-sky-500/10 text-sky-400': uploadStatus === 'uploading',
+                     'bg-red-500/5 border border-red-500/10 text-red-400': uploadStatus === 'upload_failed',
+                     'bg-amber-500/5 border border-amber-500/10 text-amber-400': uploadStatus === 'session_expired'
+                 }">
+                <span x-show="uploadStatus === 'uploading'">Ads Editor にアップロード中...</span>
+                <span x-show="uploadStatus === 'uploaded'">Ads Editor へのアップロード完了！</span>
+                <span x-show="uploadStatus === 'upload_failed'">アップロード失敗: <span x-text="uploadError"></span></span>
+                <span x-show="uploadStatus === 'session_expired'">セッション期限切れ。<a href="/credentials" class="underline">API設定</a>から再ログインしてください。</span>
+            </div>
+        </template>
 
         <!-- Results -->
         <div x-show="result" x-cloak class="mt-4">
             <div class="px-4 py-3 rounded-xl text-sm"
                  :class="result?.status === 'completed' ? 'bg-emerald-500/5 border border-emerald-500/10 text-emerald-400' : result?.status === 'failed' ? 'bg-red-500/5 border border-red-500/10 text-red-400' : 'bg-amber-500/5 border border-amber-500/10 text-amber-400'">
-                <p class="font-medium" x-text="result?.status === 'completed' ? 'All campaigns submitted successfully!' : result?.status === 'failed' ? 'Submission failed' : 'Partial success'"></p>
+                <p class="font-medium" x-text="result?.status === 'completed' ? '全キャンペーンの入稿に成功しました！' : result?.status === 'failed' ? '入稿失敗' : '一部成功'"></p>
                 <p class="text-xs mt-1 opacity-70">
-                    <span x-text="result?.succeeded_campaigns || 0"></span> succeeded, <span x-text="result?.failed_campaigns || 0"></span> failed
+                    <span x-text="result?.succeeded_campaigns || 0"></span>成功、<span x-text="result?.failed_campaigns || 0"></span>失敗
                 </p>
-                <a x-show="result?.id" :href="'/submissions/' + result?.id" class="text-xs underline mt-2 inline-block">View details</a>
+                <a x-show="result?.id" :href="'/submissions/' + result?.id" class="text-xs underline mt-2 inline-block">詳細を見る</a>
             </div>
         </div>
     </div>
@@ -198,6 +435,8 @@ function submissionApp() {
         bid_amount: null,
         bid_strategy: 'AUTO',
         placements: '',
+        start_time: '',
+        end_time: '',
         target_platforms: '',
         target_gender: '',
         target_age_ranges: '',
@@ -206,6 +445,14 @@ function submissionApp() {
         audience_expansion: '',
         conversion_tag_id: '',
         tweet_ids: '',
+        tweet_text: '',
+        _postMode: 'compose',
+        _selectedMedia: [],
+        _showMediaPicker: false,
+        _useCard: false,
+        website_card_title: '',
+        website_card_url: '',
+        website_card_cta: 'LEARN_MORE',
     });
 
     return {
@@ -214,7 +461,22 @@ function submissionApp() {
         projectDefaults: null,
         campaigns: [defaultCampaign()],
         submitting: false,
+        uploading: false,
+        uploadStatus: null,
+        uploadError: null,
+        _uploadBatchId: null,
+        _pollInterval: null,
         result: null,
+        mediaAssets: [],
+        landingPages: [],
+        showLpSidebar: false,
+
+        async init() {
+            // メディアライブラリを読み込み
+            try {
+                this.mediaAssets = await api('/api/media');
+            } catch {}
+        },
 
         addCampaign() {
             const c = defaultCampaign();
@@ -223,7 +485,9 @@ function submissionApp() {
         },
         removeCampaign(idx) { this.campaigns.splice(idx, 1); },
         duplicateCampaign(idx) {
-            this.campaigns.splice(idx + 1, 0, JSON.parse(JSON.stringify(this.campaigns[idx])));
+            const copy = JSON.parse(JSON.stringify(this.campaigns[idx]));
+            copy._selectedMedia = [...(this.campaigns[idx]._selectedMedia || [])];
+            this.campaigns.splice(idx + 1, 0, copy);
         },
 
         applyDefaults(c) {
@@ -245,58 +509,208 @@ function submissionApp() {
         },
 
         async loadProjectDefaults() {
-            if (!this.projectId) return;
+            if (!this.projectId) { this.landingPages = []; return; }
             try {
-                const data = await api(`/api/projects/${this.projectId}`);
+                const [data, lps] = await Promise.all([
+                    api(`/api/projects/${this.projectId}`),
+                    api(`/api/projects/${this.projectId}/landing-pages`),
+                ]);
                 this.projectDefaults = data;
+                this.landingPages = lps;
                 this.campaigns.forEach(c => this.applyDefaults(c));
-                toast('Project defaults loaded');
+                toast('案件のデフォルト設定を読み込みました');
             } catch (err) { toast(err.message, 'error'); }
+        },
+
+        // Media helpers
+        isMediaSelected(c, assetId) {
+            return (c._selectedMedia || []).some(m => m.id === assetId);
+        },
+        toggleMedia(c, asset) {
+            if (!c._selectedMedia) c._selectedMedia = [];
+            const idx = c._selectedMedia.findIndex(m => m.id === asset.id);
+            if (idx >= 0) {
+                c._selectedMedia.splice(idx, 1);
+            } else {
+                // Video: max 1, Image: max 4
+                if (asset.mime_type.startsWith('video/')) {
+                    c._selectedMedia = [asset];
+                } else {
+                    // Remove any video if selecting images
+                    c._selectedMedia = c._selectedMedia.filter(m => !m.mime_type.startsWith('video/'));
+                    if (c._selectedMedia.length < 4) {
+                        c._selectedMedia.push(asset);
+                    } else {
+                        toast('画像は最大4枚まで選択できます', 'error');
+                    }
+                }
+            }
+        },
+
+        // LP sidebar helpers
+        get availableLps() {
+            return this.landingPages.filter(lp => !lp.is_used);
+        },
+        get usedLps() {
+            return this.landingPages.filter(lp => lp.is_used);
+        },
+        async toggleLpUsed(lp) {
+            try {
+                const updated = await api(`/api/landing-pages/${lp.id}`, 'PUT', { is_used: !lp.is_used });
+                const idx = this.landingPages.findIndex(l => l.id === lp.id);
+                if (idx >= 0) this.landingPages[idx] = updated;
+                toast(updated.is_used ? '使用済みに設定しました' : '使用可能に戻しました');
+            } catch (e) { toast(e.message, 'error'); }
+        },
+        setCardUrl(lp) {
+            // Set card URL on the first campaign (or active one)
+            if (this.campaigns.length > 0) {
+                const c = this.campaigns[0];
+                c._useCard = true;
+                c.website_card_url = lp.url;
+                c.website_card_title = c.website_card_title || (lp.name || '');
+                toast((lp.name || lp.url) + ' をカードに設定しました');
+                this.showLpSidebar = false;
+            }
+        },
+
+        // Placement helpers
+        getPlacementChecked(c, val) {
+            if (!c.placements) return false;
+            return c.placements.includes(val);
+        },
+        togglePlacement(c, val, event) {
+            let items = c.placements ? c.placements.split(',').map(s => s.trim()).filter(Boolean) : [];
+            if (event.target.checked) {
+                if (!items.includes(val)) items.push(val);
+            } else {
+                items = items.filter(v => v !== val);
+            }
+            c.placements = items.join(',');
         },
 
         buildPayload() {
             return {
                 project_id: parseInt(this.projectId),
-                name: this.batchName || `Submission ${new Date().toLocaleDateString('ja-JP')}`,
+                name: this.batchName || `入稿 ${new Date().toLocaleDateString('ja-JP')}`,
                 campaigns: this.campaigns.map(c => {
                     const out = { ...c };
+                    // Clean up internal fields
+                    delete out._postMode;
+                    delete out._selectedMedia;
+                    delete out._showMediaPicker;
+                    delete out._useCard;
+
+                    // Compose mode: set media_asset_ids
+                    if ((c._postMode || 'compose') === 'compose') {
+                        if (c._selectedMedia && c._selectedMedia.length > 0) {
+                            out.media_asset_ids = JSON.stringify(c._selectedMedia.map(m => m.id));
+                        }
+                        // Clear tweet_ids in compose mode
+                        out.tweet_ids = '';
+                        // Website Card
+                        if (!c._useCard) {
+                            out.website_card_title = '';
+                            out.website_card_url = '';
+                            out.website_card_cta = '';
+                        }
+                    } else {
+                        // Existing tweet ID mode: clear compose fields
+                        out.tweet_text = '';
+                        out.media_asset_ids = '';
+                        out.website_card_title = '';
+                        out.website_card_url = '';
+                        out.website_card_cta = '';
+                    }
+
                     // tweet_ids: ensure JSON array format
                     if (out.tweet_ids && !out.tweet_ids.startsWith('[')) {
                         const ids = out.tweet_ids.split(',').map(s => s.trim()).filter(Boolean);
                         out.tweet_ids = JSON.stringify(ids);
                     }
+                    // datetime-local → ISO 8601
+                    if (out.start_time) out.start_time = out.start_time + ':00+09:00';
+                    if (out.end_time) out.end_time = out.end_time + ':00+09:00';
                     return out;
                 }),
             };
         },
 
         async submitViaApi() {
-            if (!this.projectId) { toast('Select a project', 'error'); return; }
+            if (!this.projectId) { toast('案件を選択してください', 'error'); return; }
             this.submitting = true;
             this.result = null;
             try {
                 const payload = this.buildPayload();
                 const batch = await api('/api/submissions', 'POST', payload);
-                toast('Batch created, submitting...');
+                toast('バッチ作成完了、入稿中...');
                 const result = await api(`/api/submissions/${batch.id}/submit`, 'POST');
                 this.result = result;
-                if (result.status === 'completed') toast('All campaigns submitted!');
-                else if (result.status === 'partial_failure') toast('Some campaigns failed', 'error');
-                else toast('Submission failed', 'error');
+                if (result.status === 'completed') toast('全キャンペーン入稿完了！');
+                else if (result.status === 'partial_failure') toast('一部のキャンペーンが失敗しました', 'error');
+                else toast('入稿に失敗しました', 'error');
             } catch (err) { toast(err.message, 'error'); }
             this.submitting = false;
         },
 
         async downloadExcel() {
-            if (!this.projectId) { toast('Select a project', 'error'); return; }
+            if (!this.projectId) { toast('案件を選択してください', 'error'); return; }
             this.submitting = true;
             try {
                 const payload = this.buildPayload();
                 const batch = await api('/api/submissions', 'POST', payload);
                 window.location.href = `/api/submissions/${batch.id}/excel`;
-                toast('Excel download started');
+                toast('Excelダウンロードを開始しました');
             } catch (err) { toast(err.message, 'error'); }
             this.submitting = false;
+        },
+
+        async uploadToAdsEditor() {
+            if (!this.projectId) { toast('案件を選択してください', 'error'); return; }
+            if (!confirm('広告エディタにアップロードしますか？')) return;
+            this.submitting = true;
+            this.uploading = true;
+            this.uploadStatus = 'uploading';
+            this.uploadError = null;
+            try {
+                const payload = this.buildPayload();
+                const batch = await api('/api/submissions', 'POST', payload);
+                this._uploadBatchId = batch.id;
+                await api(`/api/browser/upload/${batch.id}`, 'POST');
+                toast('アップロードを開始しました...');
+                this.submitting = false;
+                this.pollUploadStatus();
+            } catch (err) {
+                if (err.message && err.message.includes('session')) {
+                    toast('ブラウザセッションが必要です。API設定からログインしてください。', 'error');
+                } else {
+                    toast(err.message, 'error');
+                }
+                this.submitting = false;
+                this.uploading = false;
+                this.uploadStatus = null;
+            }
+        },
+
+        pollUploadStatus() {
+            if (this._pollInterval) clearInterval(this._pollInterval);
+            this._pollInterval = setInterval(async () => {
+                if (!this._uploadBatchId) return;
+                try {
+                    const res = await api(`/api/browser/upload/${this._uploadBatchId}/status`);
+                    this.uploadStatus = res.upload_status;
+                    this.uploadError = res.upload_error;
+                    if (res.upload_status === 'uploaded') {
+                        clearInterval(this._pollInterval);
+                        toast('広告エディタへのアップロード完了！');
+                        this.uploading = false;
+                    } else if (res.upload_status === 'upload_failed' || res.upload_status === 'session_expired') {
+                        clearInterval(this._pollInterval);
+                        toast(res.upload_error || 'アップロード失敗', 'error');
+                        this.uploading = false;
+                    }
+                } catch (err) { /* keep polling */ }
+            }, 3000);
         },
     };
 }

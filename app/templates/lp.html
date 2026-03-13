@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% block title %}LP管理 - X Ads Automation{% endblock %}
+{% block content %}
+<div x-data="lpApp()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-white">LP管理</h1>
+            <p class="text-sm text-gray-500 mt-1">ランディングページのストック管理</p>
+        </div>
+    </div>
+
+    <!-- Project Selector -->
+    <div class="glass rounded-2xl p-5">
+        <h2 class="text-sm font-semibold text-white mb-3">案件を選択</h2>
+        <select x-model="projectId" @change="loadLps()" class="input-field w-full max-w-md px-3 py-2.5 rounded-xl text-sm text-white bg-transparent">
+            <option value="">-- 案件を選択 --</option>
+            {% for p in projects %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- LP Content (after project selected) -->
+    <div x-show="projectId" x-cloak class="space-y-4">
+
+        <!-- Actions bar -->
+        <div class="flex items-center space-x-2">
+            <button @click="showAddForm = !showAddForm; showBulkForm = false" class="px-3 py-1.5 text-xs text-sky-400 hover:bg-sky-500/10 rounded-lg transition-colors flex items-center">
+                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                LP追加
+            </button>
+            <button @click="showBulkForm = !showBulkForm; showAddForm = false" class="px-3 py-1.5 text-xs text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors flex items-center">
+                <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/></svg>
+                一括ペースト
+            </button>
+            <div class="flex-1"></div>
+            <span class="text-[11px] text-gray-500" x-show="lps.length > 0">
+                <span x-text="lps.length"></span>件のLP
+                <span x-show="lps.filter(l => l.is_used).length > 0" class="text-amber-400">
+                    （<span x-text="lps.filter(l => l.is_used).length"></span>件 使用済み）
+                </span>
+            </span>
+        </div>
+
+        <!-- Single LP Add Form -->
+        <div x-show="showAddForm" x-cloak class="glass rounded-2xl p-5">
+            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">LP追加</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[10px] font-medium text-gray-500 uppercase mb-1">URL *</label>
+                    <input x-model="addForm.url" type="url" placeholder="https://..." class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-medium text-gray-500 uppercase mb-1">LP名（任意）</label>
+                    <input x-model="addForm.name" type="text" placeholder="メインLP" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-medium text-gray-500 uppercase mb-1">メモ（任意）</label>
+                    <input x-model="addForm.description" type="text" placeholder="備考" class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600">
+                </div>
+            </div>
+            <div class="flex justify-end mt-3">
+                <button @click="addSingleLp()" :disabled="!addForm.url" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">追加</button>
+            </div>
+        </div>
+
+        <!-- Bulk Paste Form -->
+        <div x-show="showBulkForm" x-cloak class="glass rounded-2xl p-5">
+            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">一括ペースト</h3>
+            <p class="text-[11px] text-gray-500 mb-2">URLを1行ずつ入力またはペーストしてください（最大50件）</p>
+            <textarea x-model="bulkText" rows="6" placeholder="https://example.com/lp1&#10;https://example.com/lp2&#10;https://example.com/lp3&#10;..." class="input-field w-full px-3 py-2 rounded-lg text-sm text-white placeholder-gray-600 resize-none font-mono"></textarea>
+            <div class="flex items-center justify-between mt-3">
+                <span class="text-[10px] text-gray-600" x-text="parsedUrls.length + '件のURL検出'"></span>
+                <button @click="parseBulk()" :disabled="parsedUrls.length === 0" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">URLを読み込む</button>
+            </div>
+
+            <!-- Parsed URL list with name inputs -->
+            <div x-show="bulkItems.length > 0" x-cloak class="mt-4 space-y-2">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-[11px] font-semibold text-white"><span x-text="bulkItems.length"></span>件のLPを追加</h4>
+                    <button @click="submitBulk()" :disabled="bulkSaving" class="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-xs font-medium rounded-lg transition-colors">
+                        <span x-show="!bulkSaving">一括登録</span>
+                        <span x-show="bulkSaving">登録中...</span>
+                    </button>
+                </div>
+                <template x-for="(item, i) in bulkItems" :key="i">
+                    <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+                        <span class="text-[10px] text-gray-600 w-5 text-right flex-shrink-0" x-text="i + 1"></span>
+                        <input x-model="item.name" type="text" placeholder="LP名（任意）" class="input-field flex-shrink-0 w-40 px-2 py-1.5 rounded-lg text-xs text-white placeholder-gray-600">
+                        <p class="text-[11px] text-gray-400 truncate flex-1 min-w-0" x-text="item.url"></p>
+                        <button @click="bulkItems.splice(i, 1)" class="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- LP List -->
+        <div class="glass rounded-2xl p-5">
+            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">登録済みLP</h3>
+
+            <template x-if="lps.length === 0">
+                <p class="text-sm text-gray-600 text-center py-8">LPはまだ登録されていません</p>
+            </template>
+
+            <div class="space-y-2">
+                <template x-for="lp in lps" :key="lp.id">
+                    <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all"
+                         :class="lp.is_used ? 'bg-amber-500/[0.03] border-amber-500/10' : 'bg-white/[0.02] border-white/[0.04]'">
+
+                        <!-- Used checkbox -->
+                        <label class="flex items-center cursor-pointer flex-shrink-0" :title="lp.is_used ? '使用済み（クリックで解除）' : '使用済みにする'">
+                            <input type="checkbox" :checked="lp.is_used" @change="toggleUsed(lp)" class="rounded text-amber-500 bg-transparent border-gray-600">
+                        </label>
+
+                        <!-- LP info -->
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center space-x-2">
+                                <!-- Editable name -->
+                                <template x-if="editingId !== lp.id">
+                                    <div class="flex items-center space-x-2 min-w-0">
+                                        <span class="text-sm font-medium truncate" :class="lp.is_used ? 'text-gray-500 line-through' : 'text-white'" x-text="lp.name || '(名称なし)'"></span>
+                                        <span x-show="lp.is_used" class="badge bg-amber-500/10 text-amber-400 border border-amber-500/20 flex-shrink-0">使用済み</span>
+                                    </div>
+                                </template>
+                                <template x-if="editingId === lp.id">
+                                    <input x-model="editForm.name" type="text" placeholder="LP名（任意）" class="input-field px-2 py-1 rounded-lg text-sm text-white placeholder-gray-600 w-48">
+                                </template>
+                            </div>
+                            <template x-if="editingId !== lp.id">
+                                <p class="text-[11px] truncate mt-0.5" :class="lp.is_used ? 'text-gray-600' : 'text-gray-500'" x-text="lp.url"></p>
+                            </template>
+                            <template x-if="editingId === lp.id">
+                                <input x-model="editForm.url" type="url" class="input-field w-full px-2 py-1 rounded-lg text-xs text-white mt-1">
+                            </template>
+                            <template x-if="lp.description && editingId !== lp.id">
+                                <p class="text-[10px] text-gray-600 mt-0.5" x-text="lp.description"></p>
+                            </template>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-center space-x-1.5 flex-shrink-0">
+                            <template x-if="editingId !== lp.id">
+                                <div class="flex items-center space-x-1.5">
+                                    <button @click="navigator.clipboard.writeText(lp.url); toast('URLをコピーしました')" class="px-2 py-1 text-[10px] text-sky-400 hover:bg-sky-500/10 rounded transition-colors">コピー</button>
+                                    <button @click="startEdit(lp)" class="px-2 py-1 text-[10px] text-gray-400 hover:bg-white/5 rounded transition-colors">編集</button>
+                                    <button @click="deleteLp(lp.id)" class="px-2 py-1 text-[10px] text-red-400 hover:bg-red-500/10 rounded transition-colors">削除</button>
+                                </div>
+                            </template>
+                            <template x-if="editingId === lp.id">
+                                <div class="flex items-center space-x-1.5">
+                                    <button @click="saveEdit(lp.id)" class="px-2 py-1 text-[10px] text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors">保存</button>
+                                    <button @click="editingId = null" class="px-2 py-1 text-[10px] text-gray-400 hover:bg-white/5 rounded transition-colors">取消</button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function lpApp() {
+    return {
+        projectId: '',
+        lps: [],
+        showAddForm: false,
+        showBulkForm: false,
+        addForm: { name: '', url: '', description: '' },
+
+        // Bulk paste
+        bulkText: '',
+        bulkItems: [],
+        bulkSaving: false,
+
+        // Edit
+        editingId: null,
+        editForm: { name: '', url: '' },
+
+        get parsedUrls() {
+            if (!this.bulkText.trim()) return [];
+            return this.bulkText.split('\n')
+                .map(l => l.trim())
+                .filter(l => l && (l.startsWith('http://') || l.startsWith('https://')));
+        },
+
+        async loadLps() {
+            if (!this.projectId) { this.lps = []; return; }
+            try {
+                this.lps = await api(`/api/projects/${this.projectId}/landing-pages`);
+            } catch (e) { toast(e.message, 'error'); }
+        },
+
+        async addSingleLp() {
+            if (!this.addForm.url) return;
+            try {
+                const lp = await api(`/api/projects/${this.projectId}/landing-pages`, 'POST', {
+                    name: this.addForm.name || '',
+                    url: this.addForm.url,
+                    description: this.addForm.description || null,
+                });
+                this.lps.unshift(lp);
+                this.addForm = { name: '', url: '', description: '' };
+                toast('LPを追加しました');
+            } catch (e) { toast(e.message, 'error'); }
+        },
+
+        parseBulk() {
+            const urls = this.parsedUrls;
+            if (urls.length === 0) return;
+            this.bulkItems = urls.map(url => ({ url, name: '' }));
+        },
+
+        async submitBulk() {
+            if (this.bulkItems.length === 0) return;
+            this.bulkSaving = true;
+            try {
+                const payload = {
+                    urls: this.bulkItems.map(i => i.url),
+                    names: this.bulkItems.map(i => i.name),
+                };
+                const created = await api(`/api/projects/${this.projectId}/landing-pages/bulk`, 'POST', payload);
+                this.lps = [...created, ...this.lps];
+                this.bulkItems = [];
+                this.bulkText = '';
+                toast(`${created.length}件のLPを登録しました`);
+            } catch (e) { toast(e.message, 'error'); }
+            this.bulkSaving = false;
+        },
+
+        async toggleUsed(lp) {
+            try {
+                const updated = await api(`/api/landing-pages/${lp.id}`, 'PUT', { is_used: !lp.is_used });
+                const idx = this.lps.findIndex(l => l.id === lp.id);
+                if (idx >= 0) this.lps[idx] = updated;
+                toast(updated.is_used ? '使用済みに設定しました' : '使用可能に戻しました');
+            } catch (e) { toast(e.message, 'error'); }
+        },
+
+        startEdit(lp) {
+            this.editingId = lp.id;
+            this.editForm = { name: lp.name || '', url: lp.url };
+        },
+
+        async saveEdit(id) {
+            try {
+                const updated = await api(`/api/landing-pages/${id}`, 'PUT', {
+                    name: this.editForm.name,
+                    url: this.editForm.url,
+                });
+                const idx = this.lps.findIndex(l => l.id === id);
+                if (idx >= 0) this.lps[idx] = updated;
+                this.editingId = null;
+                toast('LPを更新しました');
+            } catch (e) { toast(e.message, 'error'); }
+        },
+
+        async deleteLp(id) {
+            if (!confirm('このLPを削除しますか？')) return;
+            try {
+                await api('/api/landing-pages/' + id, 'DELETE');
+                this.lps = this.lps.filter(l => l.id !== id);
+                toast('削除しました');
+            } catch (e) { toast(e.message, 'error'); }
+        },
+    };
+}
+</script>
+{% endblock %}

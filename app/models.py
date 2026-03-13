@@ -65,6 +65,9 @@ class User(Base):
     submission_batches: Mapped[List[SubmissionBatch]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    media_assets: Mapped[List[MediaAsset]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def set_password(self, password: str):
         salt = os.urandom(32)
@@ -195,6 +198,9 @@ class Project(Base):
     submission_batches: Mapped[List[SubmissionBatch]] = relationship(
         back_populates="project"
     )
+    landing_pages: Mapped[List[LandingPage]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 # =============================================================================
@@ -226,6 +232,12 @@ class SubmissionBatch(Base):
     submitted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_jst)
+
+    # Browser upload tracking
+    upload_status: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True
+    )  # None, uploading, uploaded, upload_failed, session_expired
+    upload_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     user: Mapped[User] = relationship(back_populates="submission_batches")
     project: Mapped[Optional[Project]] = relationship(back_populates="submission_batches")
@@ -280,6 +292,11 @@ class SubmissionCampaign(Base):
     # --- Tweet ---
     tweet_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     tweet_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # ダークポスト用
+    media_asset_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    card_uri: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    website_card_title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    website_card_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    website_card_cta: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # --- API結果 ---
     status: Mapped[str] = mapped_column(String(30), default="pending")
@@ -298,3 +315,50 @@ class SubmissionCampaign(Base):
     )
 
     batch: Mapped[SubmissionBatch] = relationship(back_populates="campaigns")
+
+
+# =============================================================================
+# 6. MediaAsset（メディアライブラリ）
+# =============================================================================
+
+class MediaAsset(Base):
+    """ユーザーのメディアファイル（画像・動画）"""
+    __tablename__ = "media_assets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)  # UUID.ext
+    original_filename: Mapped[str] = mapped_column(String(500), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)  # bytes
+    width: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    height: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_jst)
+
+    user: Mapped[User] = relationship(back_populates="media_assets")
+
+
+# =============================================================================
+# 7. LandingPage（LPストック）
+# =============================================================================
+
+class LandingPage(Base):
+    """案件ごとのLP（ランディングページ）ストック"""
+    __tablename__ = "landing_pages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, default="")
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_jst)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=now_jst, onupdate=now_jst
+    )
+
+    project: Mapped[Project] = relationship(back_populates="landing_pages")
