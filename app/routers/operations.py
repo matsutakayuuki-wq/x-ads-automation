@@ -1,7 +1,6 @@
 """運用（Campaign Operations）— アクティブキャンペーン管理"""
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -14,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.auth import get_current_user
 from app.models import Project, User, XAdsCredential
-from app.services.x_ads_client import XAdsClient, XAdsApiError, micro_to_yen
+from app.services.x_ads_client import XAdsClient, XAdsApiError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -244,5 +243,6 @@ def update_campaign_status(
             "campaign_id": campaign_id,
             "entity_status": result.get("entity_status", body.entity_status),
         }
-    except XAdsApiError as e:
+    except Exception as e:
+        logger.warning("update_campaign failed: %s", e)
         raise HTTPException(400, str(e))
