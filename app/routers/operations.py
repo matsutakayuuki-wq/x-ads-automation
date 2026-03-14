@@ -23,6 +23,41 @@ templates = Jinja2Templates(directory="app/templates")
 JST = timezone(timedelta(hours=9))
 
 
+def _safe_micro_to_yen(value) -> int:
+    """None/文字列/不正値でもクラッシュしない micro→yen 変換"""
+    if value is None:
+        return 0
+    try:
+        return int(value) // 1_000_000
+    except (TypeError, ValueError):
+        return 0
+
+
+def _parse_stats(stats_data: list[dict]) -> dict[str, int]:
+    """Stats APIレスポンスからキャンペーンID→billed_charge_local_micro のマップを返す"""
+    result: dict[str, int] = {}
+    if not stats_data:
+        return result
+    for item in stats_data:
+        cid = item.get("id")
+        if not cid:
+            continue
+        try:
+            id_data = item.get("id_data", [])
+            if not id_data:
+                continue
+            metrics = id_data[0].get("metrics", {})
+            billed = metrics.get("billed_charge_local_micro")
+            if billed is None:
+                continue
+            if isinstance(billed, list):
+                billed = sum(int(b) for b in billed if b is not None) if billed else 0
+            result[cid] = int(billed)
+        except Exception as e:
+            logger.debug("Stats parse error for campaign %s: %s", cid, e)
+    return result
+
+
 def _build_client(cred: XAdsCredential) -> XAdsClient:
     return XAdsClient(
         api_key=cred.api_key,
@@ -82,7 +117,8 @@ def get_operations_campaigns(
         try:
             client = _build_client(cred)
             campaigns = client.get_campaigns(cred.ads_account_id)
-        except XAdsApiError as e:
+        except Exception as e:
+            logger.warning("get_campaigns failed for %s: %s", proj.name, e)
             result.append({
                 "project_id": proj.id,
                 "project_name": proj.name,
@@ -101,64 +137,55 @@ def get_operations_campaigns(
             continue
 
         # 統計取得
-        campaign_ids = [c["id"] for c in campaigns]
+        campaign_ids = [c.get("id") for c in campaigns if c.get("id")]
         now = datetime.now(JST)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        # 全期間: 過去1年分（API上限）
         all_start = now - timedelta(days=365)
 
-        today_stats = {}
-        total_stats = {}
-        try:
-            today_data = client.get_campaign_stats(
-                cred.ads_account_id,
-                campaign_ids,
-                start_time=today_start.isoformat(),
-                end_time=now.isoformat(),
-            )
-            for item in today_data:
-                cid = item.get("id")
-                metrics = item.get("id_data", [{}])
-                if metrics:
-                    m = metrics[0].get("metrics", {})
-                    billed = m.get("billed_charge_local_micro", [0])
-                    if isinstance(billed, list):
-                        billed = sum(billed) if billed else 0
-                    today_stats[cid] = int(billed)
-        except XAdsApiError as e:
-            logger.warning("Stats (today) failed for %s: %s", proj.name, e)
+        today_stats: dict[str, int] = {}
+        total_stats: dict[str, int] = {}
 
-        try:
-            total_data = client.get_campaign_stats(
-                cred.ads_account_id,
-                campaign_ids,
-                start_time=all_start.isoformat(),
-                end_time=now.isoformat(),
-            )
-            for item in total_data:
-                cid = item.get("id")
-                metrics = item.get("id_data", [{}])
-                if metrics:
-                    m = metrics[0].get("metrics", {})
-                    billed = m.get("billed_charge_local_micro", [0])
-                    if isinstance(billed, list):
-                        billed = sum(billed) if billed else 0
-                    total_stats[cid] = int(billed)
-        except XAdsApiError as e:
-            logger.warning("Stats (total) failed for %s: %s", proj.name, e)
+        if campaign_ids:
+            try:
+                today_data = client.get_campaign_stats(
+                    cred.ads_account_id,
+                    campaign_ids,
+                    start_time=today_start.isoformat(),
+                    end_time=now.isoformat(),
+                )
+                today_stats = _parse_stats(today_data)
+            except Exception as e:
+                logger.warning("Stats (today) failed for %s: %s", proj.name, e)
+
+            try:
+                total_data = client.get_campaign_stats(
+                    cred.ads_account_id,
+                    campaign_ids,
+                    start_time=all_start.isoformat(),
+                    end_time=now.isoformat(),
+                )
+                total_stats = _parse_stats(total_data)
+            except Exception as e:
+                logger.warning("Stats (total) failed for %s: %s", proj.name, e)
 
         campaign_list = []
         for c in campaigns:
-            cid = c["id"]
+            cid = c.get("id", "")
+            try:
+                daily_budget = _safe_micro_to_yen(c.get("daily_budget_amount_local_micro"))
+                total_budget = _safe_micro_to_yen(c.get("total_budget_amount_local_micro"))
+            except Exception:
+                daily_budget = 0
+                total_budget = 0
             campaign_list.append({
                 "id": cid,
                 "name": c.get("name", ""),
                 "entity_status": c.get("entity_status", "UNKNOWN"),
                 "objective": c.get("objective", ""),
-                "daily_budget": micro_to_yen(c.get("daily_budget_amount_local_micro", 0) or 0),
-                "total_budget": micro_to_yen(c.get("total_budget_amount_local_micro", 0) or 0),
-                "spend_today": micro_to_yen(today_stats.get(cid, 0)),
-                "spend_total": micro_to_yen(total_stats.get(cid, 0)),
+                "daily_budget": daily_budget,
+                "total_budget": total_budget,
+                "spend_today": _safe_micro_to_yen(today_stats.get(cid)),
+                "spend_total": _safe_micro_to_yen(total_stats.get(cid)),
                 "start_time": c.get("start_time"),
                 "end_time": c.get("end_time"),
                 "created_at": c.get("created_at"),
