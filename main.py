@@ -35,11 +35,12 @@ async def lifespan(app: FastAPI):
     Path("data/browser_sessions").mkdir(parents=True, exist_ok=True)
     Path("data/temp_excel").mkdir(parents=True, exist_ok=True)
     Path("data/media").mkdir(parents=True, exist_ok=True)
-    init_db()
-    logger.info("Database initialized.")
-
-    # Lightweight schema migrations for SQLite
-    _run_migrations()
+    try:
+        init_db()
+        logger.info("Database initialized.")
+        _run_migrations()
+    except Exception as e:
+        logger.error("Database init/migration failed (app will still start): %s", e)
 
     yield
 
@@ -124,6 +125,13 @@ def _run_migrations():
 
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
+
+
+# ヘルスチェック（認証不要・DB不要）
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 # ユーザー認証ミドルウェア
 from app.middleware import AuthMiddleware  # noqa: E402

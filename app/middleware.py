@@ -12,7 +12,7 @@ from starlette.responses import JSONResponse, RedirectResponse
 from app.auth import get_user_id_from_cookie
 
 # 認証不要のパス
-PUBLIC_PATHS = {"/login", "/register", "/api/login", "/api/register", "/docs", "/openapi.json", "/redoc"}
+PUBLIC_PATHS = {"/login", "/register", "/api/login", "/api/register", "/docs", "/openapi.json", "/redoc", "/health"}
 PUBLIC_PREFIXES = ("/static/",)
 
 
