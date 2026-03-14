@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.middleware import get_current_user
+from app.auth import get_current_user
 from app.models import Project, User, XAdsCredential
 from app.services.x_ads_client import XAdsClient, XAdsApiError, micro_to_yen
 
