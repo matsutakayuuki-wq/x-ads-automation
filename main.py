@@ -133,7 +133,7 @@ app.add_middleware(AuthMiddleware)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-from app.routers import admin, auth, browser, credentials, dashboard, excel, landing_pages, media, projects, submissions  # noqa: E402
+from app.routers import admin, auth, browser, credentials, dashboard, excel, landing_pages, media, operations, projects, submissions  # noqa: E402
 
 app.include_router(auth.router)
 app.include_router(dashboard.router)
@@ -144,6 +144,7 @@ app.include_router(excel.router)
 app.include_router(browser.router)
 app.include_router(media.router)
 app.include_router(landing_pages.router)
+app.include_router(operations.router)
 app.include_router(admin.router)
 
 

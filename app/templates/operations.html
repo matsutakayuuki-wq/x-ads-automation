@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}運用 - X Ads Automation{% endblock %}
+{% block content %}
+<div x-data="opsApp()" x-init="loadCampaigns()" class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-semibold text-white">運用</h1>
+            <p class="text-sm text-gray-500 mt-1">アクティブキャンペーン管理・広告費確認</p>
+        </div>
+        <button @click="loadCampaigns()" :disabled="loading" class="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white text-[13px] font-medium rounded-xl transition-colors flex items-center disabled:opacity-40">
+            <svg class="w-4 h-4 mr-1.5" :class="loading && 'animate-spin'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>
+            更新
+        </button>
+    </div>
+
+    <!-- Loading -->
+    <template x-if="loading && !projectData.length">
+        <div class="glass rounded-2xl p-12 text-center">
+            <svg class="w-8 h-8 text-sky-400 mx-auto mb-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-sm text-gray-500">キャンペーンデータを取得中...</p>
+        </div>
+    </template>
+
+    <!-- No projects -->
+    <template x-if="!loading && !projectData.length">
+        <div class="glass rounded-2xl p-8 text-center">
+            <svg class="w-12 h-12 text-gray-600 mx-auto mb-3" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+            <p class="text-gray-500 text-sm">アクティブな案件がありません</p>
+            <a href="/projects" class="mt-4 inline-block px-4 py-2 bg-sky-600/10 text-sky-400 text-sm rounded-xl hover:bg-sky-600/20 transition-colors">案件管理へ</a>
+        </div>
+    </template>
+
+    <!-- Summary Stats -->
+    <template x-if="projectData.length">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="stat-card rounded-2xl p-4">
+                <p class="text-[11px] text-gray-500 uppercase tracking-wider">アクティブ</p>
+                <p class="text-2xl font-bold text-emerald-400 mt-1" x-text="totalActive"></p>
+            </div>
+            <div class="stat-card rounded-2xl p-4">
+                <p class="text-[11px] text-gray-500 uppercase tracking-wider">一時停止</p>
+                <p class="text-2xl font-bold text-amber-400 mt-1" x-text="totalPaused"></p>
+            </div>
+            <div class="stat-card rounded-2xl p-4">
+                <p class="text-[11px] text-gray-500 uppercase tracking-wider">今日の広告費</p>
+                <p class="text-2xl font-bold text-white mt-1">&yen;<span x-text="totalSpendToday.toLocaleString()"></span></p>
+            </div>
+            <div class="stat-card rounded-2xl p-4">
+                <p class="text-[11px] text-gray-500 uppercase tracking-wider">全体の広告費</p>
+                <p class="text-2xl font-bold text-white mt-1">&yen;<span x-text="totalSpendAll.toLocaleString()"></span></p>
+            </div>
+        </div>
+    </template>
+
+    <!-- Project Groups -->
+    <template x-for="proj in projectData" :key="proj.project_id">
+        <div class="space-y-3">
+            <!-- Project Header -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <a :href="'/projects/' + proj.project_id" class="text-sm font-semibold text-white hover:text-sky-400 transition-colors" x-text="proj.project_name"></a>
+                    <template x-if="proj.ads_account_id">
+                        <span class="text-[10px] text-gray-600" x-text="proj.ads_account_id"></span>
+                    </template>
+                </div>
+                <div class="flex items-center space-x-3 text-xs text-gray-500">
+                    <span>Active: <span class="text-emerald-400" x-text="proj.campaigns.filter(c => c.entity_status === 'ACTIVE').length"></span></span>
+                    <span>Today: &yen;<span class="text-white" x-text="proj.campaigns.reduce((s, c) => s + c.spend_today, 0).toLocaleString()"></span></span>
+                </div>
+            </div>
+
+            <!-- Error -->
+            <template x-if="proj.error">
+                <div class="glass rounded-2xl p-4 border-red-500/20">
+                    <p class="text-xs text-red-400" x-text="proj.error"></p>
+                </div>
+            </template>
+
+            <!-- No campaigns -->
+            <template x-if="!proj.error && !proj.campaigns.length">
+                <div class="glass rounded-2xl p-4 text-center">
+                    <p class="text-xs text-gray-500">キャンペーンがありません</p>
+                </div>
+            </template>
+
+            <!-- Campaign Cards -->
+            <template x-if="proj.campaigns.length">
+                <div class="space-y-2">
+                    <template x-for="camp in proj.campaigns" :key="camp.id">
+                        <div class="glass rounded-2xl p-4 hover:border-sky-500/20 transition-all">
+                            <div class="flex items-center justify-between">
+                                <!-- Left: Name + Status -->
+                                <div class="flex items-center space-x-3 min-w-0 flex-1">
+                                    <span class="badge flex-shrink-0"
+                                          :class="camp.entity_status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' :
+                                                  camp.entity_status === 'PAUSED' ? 'bg-amber-500/10 text-amber-400' :
+                                                  'bg-gray-500/10 text-gray-400'"
+                                          x-text="camp.entity_status === 'ACTIVE' ? '配信中' :
+                                                  camp.entity_status === 'PAUSED' ? '一時停止' :
+                                                  camp.entity_status"></span>
+                                    <span class="text-sm text-white truncate" x-text="camp.name"></span>
+                                    <span class="text-[10px] text-gray-600 flex-shrink-0" x-text="camp.objective"></span>
+                                </div>
+
+                                <!-- Right: Stats + Action -->
+                                <div class="flex items-center space-x-4 flex-shrink-0 ml-4">
+                                    <!-- Spend -->
+                                    <div class="text-right">
+                                        <p class="text-[10px] text-gray-500">今日</p>
+                                        <p class="text-xs text-white font-medium">&yen;<span x-text="camp.spend_today.toLocaleString()"></span></p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[10px] text-gray-500">全体</p>
+                                        <p class="text-xs text-white font-medium">&yen;<span x-text="camp.spend_total.toLocaleString()"></span></p>
+                                    </div>
+                                    <!-- Budget -->
+                                    <div class="text-right" x-show="camp.daily_budget">
+                                        <p class="text-[10px] text-gray-500">日予算</p>
+                                        <p class="text-xs text-gray-400">&yen;<span x-text="camp.daily_budget.toLocaleString()"></span></p>
+                                    </div>
+
+                                    <!-- Pause / Resume -->
+                                    <button
+                                        @click="toggleStatus(proj.project_id, camp)"
+                                        :disabled="camp._updating"
+                                        class="px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center disabled:opacity-40"
+                                        :class="camp.entity_status === 'ACTIVE'
+                                            ? 'text-amber-400 hover:bg-amber-500/10'
+                                            : 'text-emerald-400 hover:bg-emerald-500/10'">
+                                        <template x-if="camp._updating">
+                                            <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                        </template>
+                                        <template x-if="!camp._updating">
+                                            <span x-text="camp.entity_status === 'ACTIVE' ? '一時停止' : '再開'"></span>
+                                        </template>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </template>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function opsApp() {
+    return {
+        loading: false,
+        projectData: [],
+
+        get totalActive() {
+            return this.projectData.reduce((s, p) => s + p.campaigns.filter(c => c.entity_status === 'ACTIVE').length, 0);
+        },
+        get totalPaused() {
+            return this.projectData.reduce((s, p) => s + p.campaigns.filter(c => c.entity_status === 'PAUSED').length, 0);
+        },
+        get totalSpendToday() {
+            return this.projectData.reduce((s, p) => s + p.campaigns.reduce((ss, c) => ss + c.spend_today, 0), 0);
+        },
+        get totalSpendAll() {
+            return this.projectData.reduce((s, p) => s + p.campaigns.reduce((ss, c) => ss + c.spend_total, 0), 0);
+        },
+
+        async loadCampaigns() {
+            this.loading = true;
+            try {
+                const data = await api('/api/operations/campaigns');
+                // Alpine reactivity: add _updating flag
+                for (const proj of data) {
+                    for (const c of proj.campaigns) {
+                        c._updating = false;
+                    }
+                }
+                this.projectData = data;
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+            this.loading = false;
+        },
+
+        async toggleStatus(projectId, camp) {
+            const newStatus = camp.entity_status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+            const label = newStatus === 'PAUSED' ? '一時停止' : '再開';
+            camp._updating = true;
+            try {
+                await api(`/api/operations/campaigns/${camp.id}/status`, 'PUT', {
+                    entity_status: newStatus,
+                    project_id: projectId,
+                });
+                camp.entity_status = newStatus;
+                toast(`キャンペーンを${label}しました`);
+            } catch (err) {
+                toast(err.message, 'error');
+            }
+            camp._updating = false;
+        },
+    };
+}
+</script>
+{% endblock %}

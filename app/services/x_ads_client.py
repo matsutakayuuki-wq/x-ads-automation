@@ -180,9 +180,44 @@ class XAdsClient:
         data = self._request("POST", f"/accounts/{account_id}/campaigns", params=params)
         return data.get("data", {})
 
-    def get_campaigns(self, account_id: str) -> list[dict]:
+    def get_campaigns(self, account_id: str, **extra_params) -> list[dict]:
         """キャンペーン一覧"""
-        data = self._request("GET", f"/accounts/{account_id}/campaigns")
+        params = extra_params or None
+        data = self._request("GET", f"/accounts/{account_id}/campaigns", params=params)
+        return data.get("data", [])
+
+    def update_campaign(self, account_id: str, campaign_id: str, params: dict) -> dict:
+        """キャンペーン更新（ステータス変更等）
+
+        params:
+            entity_status: ACTIVE / PAUSED / DRAFT
+        """
+        data = self._request("PUT", f"/accounts/{account_id}/campaigns/{campaign_id}", params=params)
+        return data.get("data", {})
+
+    def get_campaign_stats(
+        self,
+        account_id: str,
+        campaign_ids: list[str],
+        start_time: str,
+        end_time: str,
+        granularity: str = "TOTAL",
+    ) -> list[dict]:
+        """キャンペーン統計取得
+
+        start_time/end_time: ISO 8601 (e.g. 2026-03-14T00:00:00+09:00)
+        granularity: TOTAL / DAY / HOUR
+        Returns: list of stats per campaign
+        """
+        params = {
+            "entity": "CAMPAIGN",
+            "entity_ids": ",".join(campaign_ids),
+            "start_time": start_time,
+            "end_time": end_time,
+            "granularity": granularity,
+            "metric_groups": "BILLING",
+        }
+        data = self._request("GET", f"/stats/accounts/{account_id}", params=params)
         return data.get("data", [])
 
     # =========================================================================
