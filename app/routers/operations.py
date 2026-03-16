@@ -203,6 +203,61 @@ def get_operations_campaigns(
     return result
 
 
+# ─── API: 診断（デバッグ用） ──────────────────────────────────────────
+
+@router.get("/api/operations/debug/{project_id}")
+def debug_project_campaigns(
+    project_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """X Ads APIの生レスポンスを返す（デバッグ用）"""
+    proj = db.query(Project).filter(
+        Project.id == project_id, Project.user_id == user.id
+    ).first()
+    if not proj:
+        return {"error": "案件が見つかりません"}
+    if not proj.credential:
+        return {"error": "API認証情報が未設定", "credential_id": proj.credential_id}
+
+    cred = proj.credential
+    info = {
+        "project_name": proj.name,
+        "ads_account_id": cred.ads_account_id,
+        "credential_name": cred.name,
+    }
+
+    try:
+        client = _build_client(cred)
+    except Exception as e:
+        return {**info, "error": f"クライアント構築失敗: {e}"}
+
+    # 生のAPIレスポンスを取得
+    try:
+        raw = client._request("GET", f"/accounts/{cred.ads_account_id}/campaigns")
+        info["raw_response_keys"] = list(raw.keys()) if isinstance(raw, dict) else str(type(raw))
+        info["data_type"] = raw.get("data_type")
+        info["total_count"] = raw.get("total_count")
+        data = raw.get("data")
+        if isinstance(data, list):
+            info["campaigns_count"] = len(data)
+            info["campaigns"] = [
+                {
+                    "id": c.get("id"),
+                    "name": c.get("name"),
+                    "entity_status": c.get("entity_status"),
+                }
+                for c in data[:20]
+            ]
+        else:
+            info["data_raw"] = str(data)[:1000]
+    except Exception as e:
+        info["api_error"] = str(e)
+        info["api_error_type"] = type(e).__name__
+
+    return info
+
+
 # ─── API: キャンペーンステータス更新 ─────────────────────────────────────
 
 class StatusUpdate(BaseModel):
