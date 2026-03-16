@@ -253,64 +253,112 @@ def debug_stats(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Stats API の生レスポンスを返す"""
+    """Stats API の完全診断 — 各ステップの成功/失敗を可視化"""
+    result = {"steps": []}
+
+    def log_step(name, status, data=None):
+        result["steps"].append({"step": name, "status": status, "data": data})
+
+    # Step 1: プロジェクト取得
     projects = (
         db.query(Project)
         .filter(Project.user_id == user.id, Project.is_active.is_(True))
         .all()
     )
-    for proj in projects:
-        if not proj.credential:
-            return {"error": "認証情報なし"}
-        cred = proj.credential
-        try:
-            client = _build_client(cred)
-        except Exception as e:
-            return {"error": f"クライアント構築失敗: {type(e).__name__}: {e}"}
+    if not projects:
+        log_step("get_projects", "FAIL", "プロジェクト0件")
+        return result
 
-        # 最初の3キャンペーンでStats テスト
-        try:
-            campaigns = client.get_campaigns(cred.ads_account_id)
-            if not campaigns:
-                return {"error": "キャンペーン0件"}
-            test_ids = [c["id"] for c in campaigns[:3]]
-        except Exception as e:
-            return {"campaigns_error": f"{type(e).__name__}: {e}"}
+    proj = projects[0]
+    if not proj.credential:
+        log_step("get_credential", "FAIL", "認証情報なし")
+        return result
 
-        now = datetime.now(JST)
-        week_ago = now - timedelta(days=7)
+    cred = proj.credential
+    log_step("get_credential", "OK", {
+        "project": proj.name,
+        "ads_account_id": cred.ads_account_id,
+    })
 
-        # 生レスポンスをそのまま返す
-        try:
-            raw = client._request(
-                "GET", f"/stats/accounts/{cred.ads_account_id}",
-                params={
-                    "entity": "CAMPAIGN",
-                    "entity_ids": ",".join(test_ids),
-                    "start_time": _fmt_time(week_ago),
-                    "end_time": _fmt_time(now),
-                    "granularity": "TOTAL",
-                    "metric_groups": "BILLING",
-                    "placement": "ALL_ON_TWITTER",
-                },
-            )
-            return {
-                "test_campaign_ids": test_ids,
-                "time_range": {
-                    "start": _fmt_time(week_ago),
-                    "end": _fmt_time(now),
-                },
-                "raw_response": raw,
+    # Step 2: クライアント構築
+    try:
+        client = _build_client(cred)
+        log_step("build_client", "OK")
+    except Exception as e:
+        log_step("build_client", "FAIL", f"{type(e).__name__}: {e}")
+        return result
+
+    # Step 3: キャンペーン取得（最初の3件だけ使う）
+    try:
+        campaigns = client.get_campaigns(cred.ads_account_id)
+        test_ids = [c["id"] for c in campaigns[:3]]
+        log_step("get_campaigns", "OK", {
+            "total_count": len(campaigns),
+            "test_ids": test_ids,
+            "sample_campaign": campaigns[0] if campaigns else None,
+        })
+    except Exception as e:
+        log_step("get_campaigns", "FAIL", f"{type(e).__name__}: {e}")
+        return result
+
+    if not test_ids:
+        log_step("get_campaigns", "FAIL", "キャンペーン0件")
+        return result
+
+    # Step 4: 時刻フォーマット確認
+    now = datetime.now(JST)
+    week_ago = now - timedelta(days=7)
+    start_str = _fmt_time(week_ago)
+    end_str = _fmt_time(now)
+    log_step("time_format", "OK", {
+        "start_time": start_str,
+        "end_time": end_str,
+        "format_check": "+" in start_str and ":" in start_str.split("+")[-1],
+    })
+
+    # Step 5: Stats API 生リクエスト
+    stats_params = {
+        "entity": "CAMPAIGN",
+        "entity_ids": ",".join(test_ids),
+        "start_time": start_str,
+        "end_time": end_str,
+        "granularity": "TOTAL",
+        "metric_groups": "BILLING",
+        "placement": "ALL_ON_TWITTER",
+    }
+    log_step("stats_request_params", "OK", stats_params)
+
+    try:
+        raw = client._request(
+            "GET", f"/stats/accounts/{cred.ads_account_id}",
+            params=stats_params,
+        )
+        log_step("stats_api_call", "OK", raw)
+    except Exception as e:
+        log_step("stats_api_call", "FAIL", {
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "error_status": getattr(e, "status_code", None),
+        })
+        return result
+
+    # Step 6: パース検証
+    stats_data = raw.get("data", [])
+    parsed = _parse_stats(stats_data)
+    log_step("parse_stats", "OK", {
+        "raw_data_count": len(stats_data),
+        "parsed_result": parsed,
+        "raw_data_structure": [
+            {
+                "id": item.get("id"),
+                "id_data_length": len(item.get("id_data", [])),
+                "id_data_sample": item.get("id_data", [{}])[0] if item.get("id_data") else "EMPTY",
             }
-        except Exception as e:
-            return {
-                "stats_error": f"{type(e).__name__}: {e}",
-                "test_campaign_ids": test_ids,
-                "time_range": {
-                    "start": _fmt_time(week_ago),
-                    "end": _fmt_time(now),
-                },
-            }
+            for item in stats_data[:3]
+        ] if stats_data else "NO_DATA",
+    })
+
+    return result
 
 
 # ─── API: キャンペーンステータス更新 ─────────────────────────────────────
