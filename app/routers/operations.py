@@ -205,57 +205,58 @@ def get_operations_campaigns(
 
 # ─── API: 診断（デバッグ用） ──────────────────────────────────────────
 
-@router.get("/api/operations/debug/{project_id}")
-def debug_project_campaigns(
-    project_id: int,
+@router.get("/api/operations/debug")
+def debug_all_campaigns(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """X Ads APIの生レスポンスを返す（デバッグ用）"""
-    proj = db.query(Project).filter(
-        Project.id == project_id, Project.user_id == user.id
-    ).first()
-    if not proj:
-        return {"error": "案件が見つかりません"}
-    if not proj.credential:
-        return {"error": "API認証情報が未設定", "credential_id": proj.credential_id}
+    """全案件のX Ads API生レスポンスを返す（デバッグ用）"""
+    projects = (
+        db.query(Project)
+        .filter(Project.user_id == user.id, Project.is_active.is_(True))
+        .all()
+    )
+    results = []
+    for proj in projects:
+        info: dict = {
+            "project_id": proj.id,
+            "project_name": proj.name,
+        }
+        if not proj.credential:
+            info["error"] = "API認証情報が未設定"
+            results.append(info)
+            continue
 
-    cred = proj.credential
-    info = {
-        "project_name": proj.name,
-        "ads_account_id": cred.ads_account_id,
-        "credential_name": cred.name,
-    }
+        cred = proj.credential
+        info["ads_account_id"] = cred.ads_account_id
+        info["credential_name"] = cred.name
 
-    try:
-        client = _build_client(cred)
-    except Exception as e:
-        return {**info, "error": f"クライアント構築失敗: {e}"}
+        try:
+            client = _build_client(cred)
+        except Exception as e:
+            info["error"] = f"クライアント構築失敗: {e}"
+            results.append(info)
+            continue
 
-    # 生のAPIレスポンスを取得
-    try:
-        raw = client._request("GET", f"/accounts/{cred.ads_account_id}/campaigns")
-        info["raw_response_keys"] = list(raw.keys()) if isinstance(raw, dict) else str(type(raw))
-        info["data_type"] = raw.get("data_type")
-        info["total_count"] = raw.get("total_count")
-        data = raw.get("data")
-        if isinstance(data, list):
-            info["campaigns_count"] = len(data)
-            info["campaigns"] = [
-                {
-                    "id": c.get("id"),
-                    "name": c.get("name"),
-                    "entity_status": c.get("entity_status"),
-                }
-                for c in data[:20]
-            ]
-        else:
-            info["data_raw"] = str(data)[:1000]
-    except Exception as e:
-        info["api_error"] = str(e)
-        info["api_error_type"] = type(e).__name__
+        try:
+            raw = client._request("GET", f"/accounts/{cred.ads_account_id}/campaigns")
+            info["raw_response_keys"] = list(raw.keys()) if isinstance(raw, dict) else str(type(raw))
+            info["total_count"] = raw.get("total_count")
+            data = raw.get("data")
+            if isinstance(data, list):
+                info["campaigns_count"] = len(data)
+                info["campaigns"] = [
+                    {"id": c.get("id"), "name": c.get("name"), "entity_status": c.get("entity_status")}
+                    for c in data[:20]
+                ]
+            else:
+                info["data_raw"] = str(data)[:1000]
+        except Exception as e:
+            info["api_error"] = str(e)
+            info["api_error_type"] = type(e).__name__
 
-    return info
+        results.append(info)
+    return results
 
 
 # ─── API: キャンペーンステータス更新 ─────────────────────────────────────
