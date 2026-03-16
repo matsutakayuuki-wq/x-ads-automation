@@ -36,7 +36,7 @@ def _safe_micro_to_yen(value) -> int:
 
 def _fmt_time(dt: datetime) -> str:
     """X Ads API 用の ISO 8601 フォーマット（マイクロ秒なし）"""
-    return dt.replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%S%z")
+    return dt.replace(microsecond=0).isoformat()
 
 
 def _parse_stats(stats_data) -> dict[str, int]:
@@ -222,29 +222,22 @@ def get_operations_campaigns(
             "project_name": proj.name,
             "ads_account_id": cred.ads_account_id,
             "error": None,
-            "campaigns": campaign_list,
-        }
-        # デバッグ情報（数値が0の場合の原因特定用）
-        if week_errors or today_errors or total_errors:
-            proj_entry["_debug"] = {
-                "week_errors": week_errors,
-                "today_errors": today_errors,
-                "total_errors": total_errors,
-            }
-        # Stats APIのデバッグ: 最初のバッチの結果サマリー
-        proj_entry["_stats_debug"] = {
-            "week_stats_count": len(week_stats),
-            "week_nonzero": sum(1 for v in week_stats.values() if v > 0),
-            "today_stats_count": len(today_stats),
-            "total_stats_count": len(total_stats),
-            "total_nonzero": sum(1 for v in total_stats.values() if v > 0),
-            "sample_week": dict(list(week_stats.items())[:3]),
-            "time_range": {
-                "week_start": _fmt_time(week_start),
-                "today_start": _fmt_time(today_start),
-                "all_start": _fmt_time(all_start),
-                "now": _fmt_time(now),
+            "_stats_debug": {
+                "week_stats_count": len(week_stats),
+                "week_nonzero": sum(1 for v in week_stats.values() if v > 0),
+                "today_stats_count": len(today_stats),
+                "total_stats_count": len(total_stats),
+                "total_nonzero": sum(1 for v in total_stats.values() if v > 0),
+                "sample_week": dict(list(week_stats.items())[:3]),
+                "errors": week_errors + today_errors + total_errors,
+                "time_range": {
+                    "week_start": _fmt_time(week_start),
+                    "today_start": _fmt_time(today_start),
+                    "all_start": _fmt_time(all_start),
+                    "now": _fmt_time(now),
+                },
             },
+            "campaigns": campaign_list,
         }
 
         if campaign_list:
