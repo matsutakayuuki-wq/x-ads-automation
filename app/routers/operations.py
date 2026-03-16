@@ -23,6 +23,8 @@ JST = timezone(timedelta(hours=9))
 STATS_BATCH_SIZE = 20  # X Ads Stats API の entity_ids 上限
 
 
+# ─── Helpers ─────────────────────────────────────────────────────────────
+
 def _safe_micro_to_yen(value) -> int:
     if value is None:
         return 0
@@ -32,10 +34,15 @@ def _safe_micro_to_yen(value) -> int:
         return 0
 
 
-def _parse_stats(stats_data: list[dict]) -> dict[str, int]:
-    """Stats APIレスポンスから campaign_id → billed_charge_local_micro のマップを返す"""
+def _fmt_time(dt: datetime) -> str:
+    """X Ads API 用の ISO 8601 フォーマット（マイクロ秒なし）"""
+    return dt.replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+def _parse_stats(stats_data) -> dict[str, int]:
+    """Stats APIレスポンスから campaign_id → billed micro のマップ"""
     result: dict[str, int] = {}
-    if not stats_data:
+    if not stats_data or not isinstance(stats_data, list):
         return result
     for item in stats_data:
         cid = item.get("id")
@@ -63,9 +70,10 @@ def _fetch_stats_batched(
     campaign_ids: list[str],
     start_time: str,
     end_time: str,
-) -> dict[str, int]:
-    """campaign_ids を STATS_BATCH_SIZE ずつ分割して Stats API を呼び出す"""
+) -> tuple[dict[str, int], list[str]]:
+    """Stats API をバッチ呼び出し。(stats_map, errors) を返す"""
     merged: dict[str, int] = {}
+    errors: list[str] = []
     for i in range(0, len(campaign_ids), STATS_BATCH_SIZE):
         batch = campaign_ids[i : i + STATS_BATCH_SIZE]
         try:
@@ -74,8 +82,10 @@ def _fetch_stats_batched(
             )
             merged.update(_parse_stats(data))
         except Exception as e:
-            logger.warning("Stats batch failed (ids %d-%d): %s", i, i + len(batch), e)
-    return merged
+            msg = f"batch[{i}:{i+len(batch)}] {type(e).__name__}: {e}"
+            logger.warning("Stats batch failed: %s", msg)
+            errors.append(msg)
+    return merged, errors
 
 
 def _build_client(cred: XAdsCredential) -> XAdsClient:
@@ -114,7 +124,7 @@ def get_operations_campaigns(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """直近7日間で広告費が発生したキャンペーンを案件別に返す"""
+    """直近7日間で広告費が発生したキャンペーン + 配信中を返す"""
     projects = (
         db.query(Project)
         .filter(Project.user_id == user.id, Project.is_active.is_(True))
@@ -125,6 +135,8 @@ def get_operations_campaigns(
     now = datetime.now(JST)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = now - timedelta(days=7)
+    # 全期間: 過去2年分（X Ads API上限付近）
+    all_start = datetime(2024, 1, 1, tzinfo=JST)
 
     result = []
     for proj in projects:
@@ -152,31 +164,41 @@ def get_operations_campaigns(
         if not campaign_ids:
             continue
 
-        # 直近7日間の広告費（フィルタ用 + 「全体」表示用）
-        week_stats = _fetch_stats_batched(
+        # ── 直近7日間の広告費（フィルタリング用） ──
+        week_stats, week_errors = _fetch_stats_batched(
             client, cred.ads_account_id, campaign_ids,
-            start_time=week_start.isoformat(), end_time=now.isoformat(),
+            start_time=_fmt_time(week_start), end_time=_fmt_time(now),
         )
 
-        # 直近7日で広告費が発生したキャンペーンIDだけ抽出
-        active_ids = {cid for cid, v in week_stats.items() if v > 0}
-
-        # 配信中(ACTIVE)のキャンペーンも含める（広告費0でも運用中なので）
+        # フィルタ: 7日間で広告費 > 0 or 配信中(ACTIVE)
+        active_ids = set()
         for c in campaigns:
-            if c.get("entity_status") == "ACTIVE" and c.get("id"):
-                active_ids.add(c["id"])
+            cid = c.get("id")
+            if not cid:
+                continue
+            if week_stats.get(cid, 0) > 0:
+                active_ids.add(cid)
+            elif c.get("entity_status") == "ACTIVE":
+                active_ids.add(cid)
 
         if not active_ids:
             continue
 
-        # 今日の広告費
-        today_ids = list(active_ids)
-        today_stats = _fetch_stats_batched(
-            client, cred.ads_account_id, today_ids,
-            start_time=today_start.isoformat(), end_time=now.isoformat(),
+        active_ids_list = list(active_ids)
+
+        # ── 今日の広告費 ──
+        today_stats, today_errors = _fetch_stats_batched(
+            client, cred.ads_account_id, active_ids_list,
+            start_time=_fmt_time(today_start), end_time=_fmt_time(now),
         )
 
-        # キャンペーンリスト構築（active_ids に含まれるもののみ）
+        # ── 全期間の広告費 ──
+        total_stats, total_errors = _fetch_stats_batched(
+            client, cred.ads_account_id, active_ids_list,
+            start_time=_fmt_time(all_start), end_time=_fmt_time(now),
+        )
+
+        # キャンペーンリスト構築
         campaign_map = {c.get("id"): c for c in campaigns}
         campaign_list = []
         for cid in sorted(active_ids):
@@ -188,25 +210,45 @@ def get_operations_campaigns(
                 "name": c.get("name", ""),
                 "entity_status": c.get("entity_status", "UNKNOWN"),
                 "objective": c.get("objective", ""),
-                "daily_budget": _safe_micro_to_yen(c.get("daily_budget_amount_local_micro")),
-                "total_budget": _safe_micro_to_yen(c.get("total_budget_amount_local_micro")),
                 "spend_today": _safe_micro_to_yen(today_stats.get(cid)),
-                "spend_week": _safe_micro_to_yen(week_stats.get(cid)),
+                "spend_total": _safe_micro_to_yen(total_stats.get(cid)),
                 "start_time": c.get("start_time"),
                 "end_time": c.get("end_time"),
-                "created_at": c.get("created_at"),
-                "updated_at": c.get("updated_at"),
                 "currency": c.get("currency", "JPY"),
             })
 
+        proj_entry = {
+            "project_id": proj.id,
+            "project_name": proj.name,
+            "ads_account_id": cred.ads_account_id,
+            "error": None,
+            "campaigns": campaign_list,
+        }
+        # デバッグ情報（数値が0の場合の原因特定用）
+        if week_errors or today_errors or total_errors:
+            proj_entry["_debug"] = {
+                "week_errors": week_errors,
+                "today_errors": today_errors,
+                "total_errors": total_errors,
+            }
+        # Stats APIのデバッグ: 最初のバッチの結果サマリー
+        proj_entry["_stats_debug"] = {
+            "week_stats_count": len(week_stats),
+            "week_nonzero": sum(1 for v in week_stats.values() if v > 0),
+            "today_stats_count": len(today_stats),
+            "total_stats_count": len(total_stats),
+            "total_nonzero": sum(1 for v in total_stats.values() if v > 0),
+            "sample_week": dict(list(week_stats.items())[:3]),
+            "time_range": {
+                "week_start": _fmt_time(week_start),
+                "today_start": _fmt_time(today_start),
+                "all_start": _fmt_time(all_start),
+                "now": _fmt_time(now),
+            },
+        }
+
         if campaign_list:
-            result.append({
-                "project_id": proj.id,
-                "project_name": proj.name,
-                "ads_account_id": cred.ads_account_id,
-                "error": None,
-                "campaigns": campaign_list,
-            })
+            result.append(proj_entry)
 
     return result
 
@@ -214,72 +256,68 @@ def get_operations_campaigns(
 # ─── API: 診断 ───────────────────────────────────────────────────────────
 
 @router.get("/api/operations/debug")
-def debug_all_campaigns(
+def debug_stats(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Stats API の生レスポンスを確認するデバッグ用"""
+    """Stats API の生レスポンスを返す"""
     projects = (
         db.query(Project)
         .filter(Project.user_id == user.id, Project.is_active.is_(True))
         .all()
     )
-    results = []
     for proj in projects:
-        info: dict = {"project_id": proj.id, "project_name": proj.name}
         if not proj.credential:
-            info["error"] = "API認証情報が未設定"
-            results.append(info)
-            continue
-
+            return {"error": "認証情報なし"}
         cred = proj.credential
-        info["ads_account_id"] = cred.ads_account_id
-
         try:
             client = _build_client(cred)
         except Exception as e:
-            info["error"] = f"クライアント構築失敗: {type(e).__name__}: {e}"
-            results.append(info)
-            continue
+            return {"error": f"クライアント構築失敗: {type(e).__name__}: {e}"}
 
-        # キャンペーン取得
+        # 最初の3キャンペーンでStats テスト
         try:
-            campaigns_raw = client._request("GET", f"/accounts/{cred.ads_account_id}/campaigns")
-            data = campaigns_raw.get("data", [])
-            info["campaigns_count"] = len(data) if isinstance(data, list) else 0
+            campaigns = client.get_campaigns(cred.ads_account_id)
+            if not campaigns:
+                return {"error": "キャンペーン0件"}
+            test_ids = [c["id"] for c in campaigns[:3]]
         except Exception as e:
-            info["campaigns_error"] = f"{type(e).__name__}: {e}"
-            results.append(info)
-            continue
+            return {"campaigns_error": f"{type(e).__name__}: {e}"}
 
-        # Stats テスト（最初の5件のみ）
-        if isinstance(data, list) and data:
-            test_ids = [c.get("id") for c in data[:5] if c.get("id")]
-            if test_ids:
-                now = datetime.now(JST)
-                week_ago = now - timedelta(days=7)
-                try:
-                    stats_raw = client._request(
-                        "GET", f"/stats/accounts/{cred.ads_account_id}",
-                        params={
-                            "entity": "CAMPAIGN",
-                            "entity_ids": ",".join(test_ids),
-                            "start_time": week_ago.isoformat(),
-                            "end_time": now.isoformat(),
-                            "granularity": "TOTAL",
-                            "metric_groups": "BILLING",
-                        },
-                    )
-                    info["stats_raw_keys"] = list(stats_raw.keys()) if isinstance(stats_raw, dict) else str(type(stats_raw))
-                    stats_data = stats_raw.get("data", [])
-                    info["stats_count"] = len(stats_data) if isinstance(stats_data, list) else 0
-                    if isinstance(stats_data, list) and stats_data:
-                        info["stats_sample"] = stats_data[0]
-                except Exception as e:
-                    info["stats_error"] = f"{type(e).__name__}: {e}"
+        now = datetime.now(JST)
+        week_ago = now - timedelta(days=7)
 
-        results.append(info)
-    return results
+        # 生レスポンスをそのまま返す
+        try:
+            raw = client._request(
+                "GET", f"/stats/accounts/{cred.ads_account_id}",
+                params={
+                    "entity": "CAMPAIGN",
+                    "entity_ids": ",".join(test_ids),
+                    "start_time": _fmt_time(week_ago),
+                    "end_time": _fmt_time(now),
+                    "granularity": "TOTAL",
+                    "metric_groups": "BILLING",
+                    "placement": "ALL_ON_TWITTER",
+                },
+            )
+            return {
+                "test_campaign_ids": test_ids,
+                "time_range": {
+                    "start": _fmt_time(week_ago),
+                    "end": _fmt_time(now),
+                },
+                "raw_response": raw,
+            }
+        except Exception as e:
+            return {
+                "stats_error": f"{type(e).__name__}: {e}",
+                "test_campaign_ids": test_ids,
+                "time_range": {
+                    "start": _fmt_time(week_ago),
+                    "end": _fmt_time(now),
+                },
+            }
 
 
 # ─── API: キャンペーンステータス更新 ─────────────────────────────────────

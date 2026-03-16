@@ -216,6 +216,7 @@ class XAdsClient:
             "end_time": end_time,
             "granularity": granularity,
             "metric_groups": "BILLING",
+            "placement": "ALL_ON_TWITTER",
         }
         data = self._request("GET", f"/stats/accounts/{account_id}", params=params)
         return data.get("data", [])
