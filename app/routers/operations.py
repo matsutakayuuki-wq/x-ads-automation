@@ -234,7 +234,13 @@ def debug_all_campaigns(
         try:
             client = _build_client(cred)
         except Exception as e:
-            info["error"] = f"クライアント構築失敗: {e}"
+            info["error"] = f"クライアント構築失敗: {type(e).__name__}: {e}"
+            # 復号化テスト
+            try:
+                _ = cred.api_key
+                info["decrypt_api_key"] = "OK"
+            except Exception as de:
+                info["decrypt_api_key"] = f"FAIL: {type(de).__name__}: {de}"
             results.append(info)
             continue
 
